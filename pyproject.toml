@@ -1,0 +1,19 @@
+[project]
+name = "bhumi"
+version = "0.1.0"
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+dependencies = [
+    "gala>=1.11.0",
+    "matplotlib>=3.10.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# [tool.hatch.metadata]
+# allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+# packages = ["src/TODO"]
