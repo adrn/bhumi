@@ -40,6 +40,7 @@ SOURCE_COLUMNS = [
     "phot_bp_mean_mag",
     "phot_rp_mean_mag",
     "ruwe",
+    "has_rvs",
 ]
 
 # Columns needed for the CMD neighbor plot
@@ -210,6 +211,26 @@ def get_cmd_neighbors(source_id: int) -> dict[str, Any] | None:
         bp_mag = f["phot_bp_mean_mag"][:]
         rp_mag = f["phot_rp_mean_mag"][:]
 
+    # Find the target first
+    target_mask = all_source_ids == source_id
+    if not np.any(target_mask):
+        logger.warning("source_id=%d not found in CMD chunk file %s", source_id, filepath.name)
+        return None
+
+    target_idx = int(np.flatnonzero(target_mask)[0])
+
+    # Check if target has valid data for CMD
+    target_valid = (
+        np.isfinite(parallax[target_idx])
+        and parallax[target_idx] > 0
+        and np.isfinite(g_mag[target_idx])
+        and np.isfinite(bp_mag[target_idx])
+        and np.isfinite(rp_mag[target_idx])
+    )
+    if not target_valid:
+        logger.warning("source_id=%d has invalid photometry/parallax for CMD", source_id)
+        return None
+
     # Filter to stars with valid photometry and positive parallax
     valid = (
         np.isfinite(parallax)
@@ -228,11 +249,8 @@ def get_cmd_neighbors(source_id: int) -> dict[str, Any] | None:
     abs_g = g_mag + 5.0 * np.log10(parallax) - 10.0
     bp_rp = bp_mag - rp_mag
 
-    # Find the target
+    # Find the target in the filtered arrays
     target_mask = all_source_ids == source_id
-    if not np.any(target_mask):
-        return None
-
     target_idx = int(np.flatnonzero(target_mask)[0])
 
     # Subsample neighbors if too many
@@ -260,32 +278,41 @@ def get_cmd_neighbors(source_id: int) -> dict[str, Any] | None:
     }
 
 
-def get_rvs_spectrum(source_id: int) -> dict[str, Any] | None:
+def get_rvs_spectrum(source_id: int, has_rvs: bool | None = None) -> dict[str, Any] | None:
     """Read the RVS mean spectrum for a source, if it exists.
 
     Args:
         source_id: Gaia DR3 source identifier.
+        has_rvs: Pre-checked has_rvs flag from GaiaSource. If False, skip file I/O.
 
     Returns:
         Dictionary with wavelength, flux, flux_error arrays, or None.
     """
+    # If we know the source doesn't have RVS, skip file I/O
+    if has_rvs is False:
+        return None
+
     healpix = healpix_from_source_id(source_id)
     filepath = _get_rvs_index().find_file(healpix)
     if filepath is None:
         return None
 
-    with h5py.File(filepath, "r") as f:
-        source_ids = f["source_id"][:]
-        mask = source_ids == source_id
-        if not np.any(mask):
-            return None
+    try:
+        with h5py.File(filepath, "r") as f:
+            source_ids = f["source_id"][:]
+            mask = source_ids == source_id
+            if not np.any(mask):
+                return None
 
-        idx = int(np.flatnonzero(mask)[0])
-        flux = f["flux"][idx]
-        flux_error = f["flux_error"][idx]
+            idx = int(np.flatnonzero(mask)[0])
+            flux = f["flux"][idx]
+            flux_error = f["flux_error"][idx]
 
-    return {
-        "wavelength": RVS_WAVELENGTH_NM.tolist(),
-        "flux": flux.tolist(),
-        "flux_error": flux_error.tolist(),
-    }
+        return {
+            "wavelength": RVS_WAVELENGTH_NM.tolist(),
+            "flux": flux.tolist(),
+            "flux_error": flux_error.tolist(),
+        }
+    except Exception as e:
+        logger.error("Failed to read RVS spectrum for source_id=%d: %s", source_id, e)
+        return None

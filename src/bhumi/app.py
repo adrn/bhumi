@@ -86,8 +86,10 @@ async def api_source(source_id: int) -> dict:
 @app.get("/api/cmd/{source_id}")
 async def api_cmd(source_id: int) -> dict:
     """Return CMD neighbor data for plotting."""
+    logger.info("CMD request for source_id=%d", source_id)
     result = data.get_cmd_neighbors(source_id)
     if result is None:
+        logger.warning("CMD data not available for source_id=%d", source_id)
         raise HTTPException(status_code=404, detail="CMD data not available")
     return result
 
@@ -95,7 +97,13 @@ async def api_cmd(source_id: int) -> dict:
 @app.get("/api/rvs/{source_id}")
 async def api_rvs(source_id: int) -> dict:
     """Return the RVS mean spectrum, if available."""
-    result = data.get_rvs_spectrum(source_id)
+    # First get the source to check has_rvs flag
+    source = data.get_source(source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found")
+    
+    has_rvs = source.get("has_rvs")
+    result = data.get_rvs_spectrum(source_id, has_rvs=has_rvs)
     if result is None:
         raise HTTPException(status_code=404, detail="No RVS spectrum available")
     return result
@@ -104,14 +112,22 @@ async def api_rvs(source_id: int) -> dict:
 @app.get("/api/orbit/{source_id}")
 async def api_orbit(source_id: int) -> dict:
     """Return orbit projections and orbital parameters."""
+    logger.info("Orbit request for source_id=%d", source_id)
     source = data.get_source(source_id)
     if source is None:
         raise HTTPException(status_code=404, detail="Source not found")
 
     enriched = science.compute_derived_quantities(source)
 
-    galcen = science.compute_galactocentric(enriched)
-    orbit = science.compute_orbit(enriched)
+    try:
+        galcen = science.compute_galactocentric(enriched)
+        orbit = science.compute_orbit(enriched)
+    except Exception as e:
+        logger.error("Orbit computation failed for source_id=%d: %s", source_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Orbit computation failed: {str(e)}"
+        )
 
     if orbit is None or galcen is None:
         raise HTTPException(
