@@ -35,7 +35,15 @@ function baseLayout(title, xLabel, yLabel, extra = {}) {
 async function apiFetch(path) {
     try {
         const resp = await fetch(path);
-        if (!resp.ok) return null;
+        if (!resp.ok) {
+            let detail = `HTTP ${resp.status}`;
+            try {
+                const body = await resp.json();
+                if (body.detail) detail += `: ${body.detail}`;
+            } catch (_) {}
+            console.error("API error:", path, detail);
+            return null;
+        }
         return await resp.json();
     } catch (e) {
         console.error("API error:", path, e);
@@ -63,14 +71,30 @@ async function loadCMD() {
         return;
     }
 
-    const neighbors = {
+    const density = {
         x: data.bp_rp,
         y: data.abs_g,
-        mode: "markers",
-        type: "scattergl",
-        marker: { color: PLOTLY_DIM, size: 2, opacity: 0.5 },
+        type: "histogram2d",
+        colorscale: [
+            [0, "rgba(0,0,0,0)"],
+            [0.01, "#1a1a4e"],
+            [0.1, "#2a4858"],
+            [0.3, "#3a7ca5"],
+            [0.5, "#6ea8fe"],
+            [0.7, "#a0c4ff"],
+            [1.0, "#e0e0e8"],
+        ],
+        colorbar: {
+            title: { text: "log\u2081\u2080(Count)", font: { color: PLOTLY_TEXT } },
+            tickfont: { color: PLOTLY_DIM },
+        },
+        xbins: { start: -1, end: 5, size: 0.05 },
+        ybins: { start: -6, end: 16, size: 0.1 },
+        zsmooth: false,
+        zauto: false,
+        zmin: 0.5,
         name: `Neighbors (${data.n_stars})`,
-        hoverinfo: "skip",
+        hoverinfo: "z",
     };
 
     const target = {
@@ -87,24 +111,42 @@ async function loadCMD() {
         name: "This source",
     };
 
+    container.innerHTML = "";
+
     const layout = baseLayout(
-        "Color–Magnitude Diagram",
-        "BP − RP (mag)",
+        "Color\u2013Magnitude Diagram",
+        "BP \u2212 RP (mag)",
         "M<sub>G</sub> (mag)",
         {
-            yaxis: {
-                title: "M<sub>G</sub> (mag)",
-                autorange: "reversed",
+            xaxis: {
+                title: "BP \u2212 RP (mag)",
+                range: [-1, 5],
                 gridcolor: PLOTLY_GRID,
                 zerolinecolor: PLOTLY_GRID,
                 color: PLOTLY_DIM,
             },
+            yaxis: {
+                title: "M<sub>G</sub> (mag)",
+                range: [16, -6],
+                gridcolor: PLOTLY_GRID,
+                zerolinecolor: PLOTLY_GRID,
+                color: PLOTLY_DIM,
+            },
+            width: 500,
+            height: 500,
             showlegend: true,
             legend: { x: 0.02, y: 0.02, bgcolor: "rgba(0,0,0,0)" },
         }
     );
 
-    Plotly.newPlot(container, [neighbors, target], layout, { responsive: true });
+    // Render, then apply log scale to density counts
+    Plotly.newPlot(container, [density, target], layout, { responsive: true }).then(() => {
+        const z = container.data[0].z;
+        if (z) {
+            const logZ = z.map(row => row.map(v => v > 0 ? Math.log10(v) : null));
+            Plotly.restyle(container, { z: [logZ], zauto: true, zmin: null }, [0]);
+        }
+    });
 }
 
 
@@ -121,6 +163,8 @@ async function loadRVS() {
         section.style.display = "none";
         return;
     }
+
+    container.innerHTML = "";
 
     const spectrum = {
         x: data.wavelength,
@@ -171,9 +215,23 @@ async function loadOrbit() {
     const plotsEl = document.getElementById("orbit-plots");
     const galcenEl = document.getElementById("galcen-section");
 
-    const data = await apiFetch(`/api/orbit/${SOURCE_ID}`);
-    if (!data) {
-        loadingEl.textContent = "Orbit computation failed or not available.";
+    let data;
+    try {
+        const resp = await fetch(`/api/orbit/${SOURCE_ID}`);
+        if (!resp.ok) {
+            let detail = `HTTP ${resp.status}`;
+            try {
+                const body = await resp.json();
+                if (body.detail) detail = body.detail;
+            } catch (_) {}
+            console.error("Orbit API error:", detail);
+            loadingEl.textContent = `Orbit failed: ${detail}`;
+            return;
+        }
+        data = await resp.json();
+    } catch (e) {
+        console.error("Orbit fetch error:", e);
+        loadingEl.textContent = `Orbit request failed: ${e.message}`;
         return;
     }
 
@@ -227,7 +285,9 @@ async function loadOrbit() {
             orbitTrace(proj.x, proj.z),
             startMarker(proj.x[0], proj.z[0]),
         ],
-        baseLayout("x–z", "x (kpc)", "z (kpc)"),
+        baseLayout("x–z", "x (kpc)", "z (kpc)", {
+            yaxis: { scaleanchor: "x", gridcolor: PLOTLY_GRID, zerolinecolor: PLOTLY_GRID, color: PLOTLY_DIM, title: "z (kpc)" },
+        }),
         { responsive: true }
     );
 
@@ -238,7 +298,9 @@ async function loadOrbit() {
             orbitTrace(proj.R, proj.z),
             startMarker(proj.R[0], proj.z[0]),
         ],
-        baseLayout("R–z", "R (kpc)", "z (kpc)"),
+        baseLayout("R–z", "R (kpc)", "z (kpc)", {
+            yaxis: { scaleanchor: "x", gridcolor: PLOTLY_GRID, zerolinecolor: PLOTLY_GRID, color: PLOTLY_DIM, title: "z (kpc)" },
+        }),
         { responsive: true }
     );
 

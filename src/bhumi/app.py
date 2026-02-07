@@ -49,7 +49,9 @@ async def index(
         return templates.TemplateResponse(
             request,
             "index.html",
-            {"error": f"Invalid source ID: '{source_id}'. Please enter a valid Gaia DR3 source_id (19-digit integer)."},
+            {
+                "error": f"Invalid source ID: '{source_id}'. Please enter a valid Gaia DR3 source_id (19-digit integer)."
+            },
         )
 
     # Verify the source exists before rendering the page
@@ -101,7 +103,7 @@ async def api_rvs(source_id: int) -> dict:
     source = data.get_source(source_id)
     if source is None:
         raise HTTPException(status_code=404, detail="Source not found")
-    
+
     has_rvs = source.get("has_rvs")
     result = data.get_rvs_spectrum(source_id, has_rvs=has_rvs)
     if result is None:
@@ -118,22 +120,36 @@ async def api_orbit(source_id: int) -> dict:
         raise HTTPException(status_code=404, detail="Source not found")
 
     enriched = science.compute_derived_quantities(source)
+    logger.info(
+        "Orbit: source_id=%d has_6d=%s parallax=%s pmra=%s pmdec=%s rv=%s",
+        source_id,
+        enriched.get("has_6d"),
+        enriched.get("parallax"),
+        enriched.get("pmra"),
+        enriched.get("pmdec"),
+        enriched.get("radial_velocity"),
+    )
 
     try:
         galcen = science.compute_galactocentric(enriched)
+        logger.info("Galactocentric result: %s", "computed" if galcen else "None")
         orbit = science.compute_orbit(enriched)
+        logger.info("Orbit result: %s", "computed" if orbit else "None")
     except Exception as e:
-        logger.error("Orbit computation failed for source_id=%d: %s", source_id, e, exc_info=True)
+        logger.error(
+            "Orbit computation failed for source_id=%d: %s", source_id, e, exc_info=True
+        )
         raise HTTPException(
-            status_code=500,
-            detail=f"Orbit computation failed: {str(e)}"
+            status_code=500, detail=f"Orbit computation failed: {str(e)}"
         )
 
     if orbit is None or galcen is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Full 6D phase-space information not available for this source",
+        detail = (
+            f"Missing 6D phase-space info: has_6d={enriched.get('has_6d')}, "
+            f"parallax={enriched.get('parallax')}, rv={enriched.get('radial_velocity')}"
         )
+        logger.warning("Orbit not available for source_id=%d: %s", source_id, detail)
+        raise HTTPException(status_code=404, detail=detail)
 
     return {
         "galactocentric": galcen,

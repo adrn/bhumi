@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 
 # Galactocentric frame defaults
 coord.galactocentric_frame_defaults.set("v4.0")
-GALCEN_FRAME = coord.Galactocentric()
+GALCEN_FRAME = coord.Galactocentric(
+    galcen_distance=8.275 * u.kpc,  # galcen_v_sun=[8.4, 251.0, 8.4] * u.km / u.s
+)
 
 # Milky Way potential for orbit integration
 MW_POTENTIAL = gp.MilkyWayPotential(version="v2")
@@ -144,6 +146,7 @@ def compute_galactocentric(source: dict[str, Any]) -> dict[str, Any] | None:
 
     sc = _build_skycoord(source)
     galcen = sc.transform_to(GALCEN_FRAME)
+    w = gd.PhaseSpacePosition(galcen.data)
 
     # Cartesian
     x = galcen.x.to(u.kpc).value
@@ -154,20 +157,17 @@ def compute_galactocentric(source: dict[str, Any]) -> dict[str, Any] | None:
     v_z = galcen.v_z.to(u.km / u.s).value
 
     # Cylindrical
-    cyl = galcen.represent_as(
-        coord.CylindricalRepresentation,
-        differential_class=coord.CylindricalDifferential,
-    )
+    cyl = w.cylindrical
     R = cyl.rho.to(u.kpc).value
     phi = cyl.phi.to(u.deg).value
     z_cyl = cyl.z.to(u.kpc).value
-    v_R = cyl.differentials["s"].d_rho.to(u.km / u.s).value
+    v_R = cyl.v_rho.to(u.km / u.s).value
     v_phi = (
-        (cyl.rho * cyl.differentials["s"].d_phi)
+        (cyl.rho * cyl.pm_phi)
         .to(u.km / u.s, equivalencies=u.dimensionless_angles())
         .value
     )
-    v_z_cyl = cyl.differentials["s"].d_z.to(u.km / u.s).value
+    v_z_cyl = cyl.v_z.to(u.km / u.s).value
 
     return {
         "cartesian": {

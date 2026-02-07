@@ -53,7 +53,7 @@ CMD_COLUMNS = [
 ]
 
 # Maximum number of CMD neighbor stars to return
-MAX_CMD_NEIGHBORS = 3000
+MAX_CMD_NEIGHBORS = 10000
 
 # Fixed RVS wavelength grid (nm)
 RVS_WAVELENGTH_NM = np.linspace(846.0, 870.0, 2401)
@@ -214,7 +214,9 @@ def get_cmd_neighbors(source_id: int) -> dict[str, Any] | None:
     # Find the target first
     target_mask = all_source_ids == source_id
     if not np.any(target_mask):
-        logger.warning("source_id=%d not found in CMD chunk file %s", source_id, filepath.name)
+        logger.warning(
+            "source_id=%d not found in CMD chunk file %s", source_id, filepath.name
+        )
         return None
 
     target_idx = int(np.flatnonzero(target_mask)[0])
@@ -228,7 +230,9 @@ def get_cmd_neighbors(source_id: int) -> dict[str, Any] | None:
         and np.isfinite(rp_mag[target_idx])
     )
     if not target_valid:
-        logger.warning("source_id=%d has invalid photometry/parallax for CMD", source_id)
+        logger.warning(
+            "source_id=%d has invalid photometry/parallax for CMD", source_id
+        )
         return None
 
     # Filter to stars with valid photometry and positive parallax
@@ -278,7 +282,9 @@ def get_cmd_neighbors(source_id: int) -> dict[str, Any] | None:
     }
 
 
-def get_rvs_spectrum(source_id: int, has_rvs: bool | None = None) -> dict[str, Any] | None:
+def get_rvs_spectrum(
+    source_id: int, has_rvs: bool | None = None
+) -> dict[str, Any] | None:
     """Read the RVS mean spectrum for a source, if it exists.
 
     Args:
