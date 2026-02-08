@@ -46,7 +46,7 @@ def compute_derived_quantities(source: dict[str, Any]) -> dict[str, Any]:
     result = dict(source)
 
     parallax = source.get("parallax")
-    parallax_error = source.get("parallax_error")
+    # parallax_error = source.get("parallax_error")
 
     # Distance and distance modulus
     if parallax is not None and parallax > 0:
