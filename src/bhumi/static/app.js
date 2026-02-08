@@ -215,6 +215,63 @@ async function loadRVS() {
 }
 
 // ---------------------------------------------------------------------------
+// XP Sampled Spectrum
+// ---------------------------------------------------------------------------
+
+async function loadXP() {
+  const section = document.getElementById("xp-section");
+  const container = document.getElementById("xp-plot");
+
+  if (!section || !container) return;
+
+  const data = await apiFetch(`/api/xp/${SOURCE_ID}`);
+  if (!data) {
+    section.style.display = "none";
+    return;
+  }
+
+  container.innerHTML = "";
+
+  const spectrum = {
+    x: data.wavelength,
+    y: data.flux,
+    mode: "lines",
+    type: "scatter",
+    line: { color: PLOTLY_ACCENT, width: 1.2 },
+    name: "Flux",
+  };
+
+  // Error band (flux ± error)
+  const upper = data.flux.map((f, i) => f + data.flux_error[i]);
+  const lower = data.flux.map((f, i) => f - data.flux_error[i]);
+
+  const errorBand = {
+    x: data.wavelength.concat([...data.wavelength].reverse()),
+    y: upper.concat([...lower].reverse()),
+    fill: "toself",
+    fillcolor: "rgba(110, 168, 254, 0.15)",
+    line: { color: "transparent" },
+    type: "scatter",
+    name: "±1σ",
+    hoverinfo: "skip",
+  };
+
+  const layout = baseLayout(
+    "XP Sampled Spectrum (BP/RP)",
+    "Wavelength (nm)",
+    "Flux",
+    {
+      showlegend: true,
+      legend: { x: 0.02, y: 0.98, bgcolor: "rgba(0,0,0,0)" },
+    },
+  );
+
+  Plotly.newPlot(container, [errorBand, spectrum], layout, {
+    responsive: true,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Orbit
 // ---------------------------------------------------------------------------
 
@@ -326,13 +383,10 @@ async function loadOrbit() {
 
   // Galactocentric velocities
   const gc = data.galactocentric;
+  const c = gc.cartesian;
   document.getElementById("vel-cartesian").innerHTML = buildTableHTML([
-    ["x", `${gc.cartesian.x_kpc} kpc`],
-    ["y", `${gc.cartesian.y_kpc} kpc`],
-    ["z", `${gc.cartesian.z_kpc} kpc`],
-    ["v<sub>x</sub>", `${gc.cartesian.v_x_km_s} km/s`],
-    ["v<sub>y</sub>", `${gc.cartesian.v_y_km_s} km/s`],
-    ["v<sub>z</sub>", `${gc.cartesian.v_z_km_s} km/s`],
+    ["(x, y, z)", `(${c.x_kpc}, ${c.y_kpc}, ${c.z_kpc}) kpc`],
+    ["(v<sub>x</sub>, v<sub>y</sub>, v<sub>z</sub>)", `(${c.v_x_km_s}, ${c.v_y_km_s}, ${c.v_z_km_s}) km/s`],
   ]);
 
   document.getElementById("vel-cylindrical").innerHTML = buildTableHTML([
@@ -361,5 +415,6 @@ async function loadOrbit() {
 document.addEventListener("DOMContentLoaded", () => {
   loadCMD();
   loadRVS();
+  loadXP();
   loadOrbit();
 });

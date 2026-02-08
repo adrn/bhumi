@@ -19,6 +19,17 @@ logger = logging.getLogger(__name__)
 GAIA_DATA_ROOT = Path("/mnt/ceph/users/gaia/dr3/hdf5")
 GAIA_SOURCE_DIR = GAIA_DATA_ROOT / "GaiaSource"
 RVS_SPECTRUM_DIR = GAIA_DATA_ROOT / "RvsMeanSpectrum"
+XP_SPECTRUM_DIR = GAIA_DATA_ROOT / "XpSampledMeanSpectrum"
+VARI_CLASS_DIR = GAIA_DATA_ROOT / "VariClassifierResult"
+NSS_ORBIT_DIR = GAIA_DATA_ROOT / "NssTwoBodyOrbit"
+
+# Value-added catalog paths
+ANDRAE_CATALOG_PATH = Path(
+    "/mnt/home/apricewhelan/data/Gaia/vac/Andrae2023/table_1_catwise.fits"
+)
+ZHANG_CATALOG_PATH = Path(
+    "/mnt/home/apricewhelan/data/Gaia/vac/Zhang2023/stellar_params_catalog_joined.h5"
+)
 
 # Columns to read from GaiaSource for the source detail page
 SOURCE_COLUMNS = [
@@ -41,6 +52,7 @@ SOURCE_COLUMNS = [
     "phot_rp_mean_mag",
     "ruwe",
     "has_rvs",
+    "has_xp_continuous",
 ]
 
 # Columns needed for the CMD neighbor plot
@@ -57,6 +69,9 @@ MAX_CMD_NEIGHBORS = 10000
 
 # Fixed RVS wavelength grid (nm)
 RVS_WAVELENGTH_NM = np.linspace(846.0, 870.0, 2401)
+
+# Fixed XP sampled spectrum wavelength grid (nm)
+XP_WAVELENGTH_NM = np.linspace(336.0, 1020.0, 343)
 
 
 def healpix_from_source_id(source_id: int) -> int:
@@ -94,7 +109,14 @@ class FileIndex:
         for p in sorted(directory.glob(f"{prefix}_*.hdf5")):
             stem = p.stem  # e.g. "GaiaSource_000000-003111"
             parts = stem.removeprefix(f"{prefix}_").split("-")
-            lo, hi = int(parts[0]), int(parts[1])
+            if len(parts) != 2:
+                logger.debug("Skipping unparseable file: %s", p.name)
+                continue
+            try:
+                lo, hi = int(parts[0]), int(parts[1])
+            except ValueError:
+                logger.debug("Skipping non-numeric range file: %s", p.name)
+                continue
             self._ranges.append((lo, hi, p))
 
         # Pre-extract the low bounds for binary search
@@ -125,6 +147,16 @@ class FileIndex:
 # Module-level singletons, initialized lazily
 _source_index: FileIndex | None = None
 _rvs_index: FileIndex | None = None
+_xp_index: FileIndex | None = None
+_vari_index: FileIndex | None = None
+
+# Value-added catalog indexes (loaded at first use)
+_andrae_source_ids: np.ndarray | None = None
+_andrae_sort_idx: np.ndarray | None = None
+_zhang_source_ids: np.ndarray | None = None
+_zhang_sort_idx: np.ndarray | None = None
+_nss_source_ids: np.ndarray | None = None
+_nss_sort_idx: np.ndarray | None = None
 
 
 def _get_source_index() -> FileIndex:
@@ -141,6 +173,44 @@ def _get_rvs_index() -> FileIndex:
     if _rvs_index is None:
         _rvs_index = FileIndex(RVS_SPECTRUM_DIR, "RvsMeanSpectrum")
     return _rvs_index
+
+
+def _get_xp_index() -> FileIndex:
+    """Return the XpSampledMeanSpectrum file index, building it on first call."""
+    global _xp_index
+    if _xp_index is None:
+        _xp_index = FileIndex(XP_SPECTRUM_DIR, "XpSampledMeanSpectrum")
+    return _xp_index
+
+
+def _get_vari_index() -> FileIndex:
+    """Return the VariClassifierResult file index, building it on first call."""
+    global _vari_index
+    if _vari_index is None:
+        _vari_index = FileIndex(VARI_CLASS_DIR, "VariClassifierResult")
+    return _vari_index
+
+
+def get_random_source_id() -> int | None:
+    """Pick a random source_id from a random HDF5 chunk file.
+
+    Returns:
+        A random Gaia DR3 source_id, or None on failure.
+    """
+    idx = _get_source_index()
+    if not idx._ranges:
+        return None
+
+    rng = np.random.default_rng()
+    _, _, filepath = idx._ranges[rng.integers(len(idx._ranges))]
+    try:
+        with h5py.File(filepath, "r") as f:
+            source_ids = f["source_id"]
+            n = len(source_ids)
+            return int(source_ids[rng.integers(n)])
+    except Exception as e:
+        logger.error("Failed to pick random source: %s", e)
+        return None
 
 
 def get_source(source_id: int) -> dict[str, Any] | None:
@@ -321,4 +391,359 @@ def get_rvs_spectrum(
         }
     except Exception as e:
         logger.error("Failed to read RVS spectrum for source_id=%d: %s", source_id, e)
+        return None
+
+
+def get_xp_spectrum(
+    source_id: int, has_xp_continuous: bool | None = None
+) -> dict[str, Any] | None:
+    """Read the XP sampled mean spectrum for a source, if it exists.
+
+    Args:
+        source_id: Gaia DR3 source identifier.
+        has_xp_continuous: Pre-checked flag from GaiaSource. If False, skip file I/O.
+
+    Returns:
+        Dictionary with wavelength, flux, flux_error arrays, or None.
+    """
+    if has_xp_continuous is False:
+        return None
+
+    healpix = healpix_from_source_id(source_id)
+    filepath = _get_xp_index().find_file(healpix)
+    if filepath is None:
+        return None
+
+    try:
+        with h5py.File(filepath, "r") as f:
+            source_ids = f["source_id"][:]
+            mask = source_ids == source_id
+            if not np.any(mask):
+                return None
+
+            idx = int(np.flatnonzero(mask)[0])
+            flux = f["flux"][idx]
+            flux_error = f["flux_error"][idx]
+
+        return {
+            "wavelength": XP_WAVELENGTH_NM.tolist(),
+            "flux": flux.tolist(),
+            "flux_error": flux_error.tolist(),
+        }
+    except Exception as e:
+        logger.error("Failed to read XP spectrum for source_id=%d: %s", source_id, e)
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Value-added catalogs
+# ---------------------------------------------------------------------------
+
+
+def _load_andrae_index() -> tuple[np.ndarray, np.ndarray]:
+    """Load the Andrae+2023 source_id column and build a sorted index.
+
+    Returns:
+        Tuple of (sorted_source_ids, sort_indices) for searchsorted lookup.
+    """
+    global _andrae_source_ids, _andrae_sort_idx
+    if _andrae_source_ids is not None:
+        return _andrae_source_ids, _andrae_sort_idx
+
+    from astropy.io import fits
+
+    logger.info("Loading Andrae+2023 source_id index from %s...", ANDRAE_CATALOG_PATH)
+    with fits.open(ANDRAE_CATALOG_PATH, memmap=True) as hdul:
+        raw_ids = hdul[1].data["source_id"].copy()
+    sort_idx = np.argsort(raw_ids)
+    _andrae_source_ids = raw_ids[sort_idx]
+    _andrae_sort_idx = sort_idx
+    logger.info("Andrae+2023 index loaded: %d rows", len(_andrae_source_ids))
+    return _andrae_source_ids, _andrae_sort_idx
+
+
+def get_andrae_params(source_id: int) -> dict[str, Any] | None:
+    """Look up stellar parameters from the Andrae+2023 XGBoost catalog.
+
+    Args:
+        source_id: Gaia DR3 source identifier.
+
+    Returns:
+        Dictionary with Teff, logg, [M/H], or None if not found.
+    """
+    if not ANDRAE_CATALOG_PATH.exists():
+        return None
+
+    try:
+        from astropy.io import fits
+
+        sorted_ids, sort_idx = _load_andrae_index()
+        pos = int(np.searchsorted(sorted_ids, source_id))
+        if pos >= len(sorted_ids) or sorted_ids[pos] != source_id:
+            return None
+
+        row_idx = int(sort_idx[pos])
+        with fits.open(ANDRAE_CATALOG_PATH, memmap=True) as hdul:
+            row = hdul[1].data[row_idx]
+
+        result: dict[str, Any] = {}
+        columns = [
+            ("teff_xgboost", "teff_xgboost"),
+            ("logg_xgboost", "logg_xgboost"),
+            ("mh_xgboost", "mh_xgboost"),
+        ]
+        for key, col in columns:
+            val = float(row[col])
+            result[key] = None if np.isnan(val) else round(val, 4)
+
+        # Boolean flag
+        try:
+            result["in_training_sample"] = bool(row["in_training_sample"])
+        except (KeyError, ValueError):
+            result["in_training_sample"] = None
+
+        return result
+    except Exception as e:
+        logger.error("Failed to read Andrae+2023 for source_id=%d: %s", source_id, e)
+        return None
+
+
+def _load_zhang_index() -> tuple[np.ndarray, np.ndarray]:
+    """Load the Zhang+2023 source_id column and build a sorted index.
+
+    Returns:
+        Tuple of (sorted_source_ids, sort_indices) for searchsorted lookup.
+    """
+    global _zhang_source_ids, _zhang_sort_idx
+    if _zhang_source_ids is not None:
+        return _zhang_source_ids, _zhang_sort_idx
+
+    logger.info("Loading Zhang+2023 source_id index from %s...", ZHANG_CATALOG_PATH)
+    with h5py.File(ZHANG_CATALOG_PATH, "r") as f:
+        raw_ids = f["__astropy_table__"]["source_id"][:]
+    sort_idx = np.argsort(raw_ids)
+    _zhang_source_ids = raw_ids[sort_idx]
+    _zhang_sort_idx = sort_idx
+    logger.info("Zhang+2023 index loaded: %d rows", len(_zhang_source_ids))
+    return _zhang_source_ids, _zhang_sort_idx
+
+
+def get_zhang_params(source_id: int) -> dict[str, Any] | None:
+    """Look up stellar parameters from the Zhang, Green & Rix 2023 catalog.
+
+    Args:
+        source_id: Gaia DR3 source identifier.
+
+    Returns:
+        Dictionary with Teff, [Fe/H], logg, extinction (with errors), or None.
+    """
+    if not ZHANG_CATALOG_PATH.exists():
+        return None
+
+    try:
+        sorted_ids, sort_idx = _load_zhang_index()
+        pos = int(np.searchsorted(sorted_ids, source_id))
+        if pos >= len(sorted_ids) or sorted_ids[pos] != source_id:
+            return None
+
+        row_idx = int(sort_idx[pos])
+        with h5py.File(ZHANG_CATALOG_PATH, "r") as f:
+            row = f["__astropy_table__"][row_idx]
+
+        columns = [
+            "zhang_teff",
+            "zhang_teff_err",
+            "zhang_feh",
+            "zhang_feh_err",
+            "zhang_logg",
+            "zhang_logg_err",
+            "zhang_extinction",
+            "zhang_extinction_err",
+            "zhang_parallax",
+            "zhang_parallax_err",
+            "quality_flags",
+            "feh_confidence",
+            "teff_confidence",
+            "logg_confidence",
+        ]
+        result: dict[str, Any] = {}
+        for col in columns:
+            try:
+                val = float(row[col])
+                if col == "quality_flags":
+                    result[col] = int(row[col])
+                elif np.isnan(val):
+                    result[col] = None
+                else:
+                    # Teff is stored in units of 1e3 K — convert to K
+                    if col in ("zhang_teff", "zhang_teff_err"):
+                        result[col] = round(val * 1000.0, 1)
+                    else:
+                        result[col] = round(val, 4)
+            except (KeyError, ValueError, IndexError):
+                result[col] = None
+
+        # Derive distance from spectrophotometric parallax
+        plx = result.get("zhang_parallax")
+        if plx is not None and plx > 0:
+            result["zhang_distance_kpc"] = round(1.0 / plx, 4)
+        else:
+            result["zhang_distance_kpc"] = None
+
+        return result
+    except Exception as e:
+        logger.error("Failed to read Zhang+2023 for source_id=%d: %s", source_id, e)
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Variability & multiplicity
+# ---------------------------------------------------------------------------
+
+# Mapping from int8 class index to (short_name, description) from
+# VariClassifierClassDefinition (nTransits:5+ classifier, 24 classes).
+_VARI_CLASS_NAMES: dict[int, tuple[str, str]] = {
+    0: ("AGN", "Active Galactic Nuclei (including Quasars)"),
+    1: ("DSCT|GDOR|SXPHE", "δ Scuti / γ Doradus / SX Phoenicis"),
+    2: ("WD", "White Dwarf variable (ZZ Ceti types)"),
+    3: ("LPV", "Long Period Variable (Mira / OGLE SRG / semiregular)"),
+    4: ("ACV|CP|MCP|ROAM|ROAP|SXARI", "Magnetic / Chemical Peculiar star"),
+    5: ("S", "Short timescale variability"),
+    6: ("MICROLENSING", "Microlensing event"),
+    7: ("CEP", "Cepheid (δ Cep / anomalous / type-II)"),
+    8: ("YSO", "Young Stellar Object"),
+    9: ("RS", "RS Canum Venaticorum"),
+    10: ("ACYG", "α Cygni variable"),
+    11: ("BCEP", "β Cephei variable"),
+    12: ("BE|GCAS|SDOR|WR", "Eruptive (Be / γ Cas / S Dor / Wolf-Rayet)"),
+    13: ("SN", "Supernova"),
+    14: ("SPB", "Slowly Pulsating B star"),
+    15: ("ECL", "Eclipsing Binary"),
+    16: ("ELL", "Ellipsoidal variable"),
+    17: ("SYST", "Symbiotic variable star"),
+    18: ("SOLAR_LIKE", "Solar-like variability (flares / spots / rotation)"),
+    19: ("CV", "Cataclysmic variable"),
+    20: ("SDB", "Sub-dwarf B star"),
+    21: ("RR", "RR Lyrae"),
+    22: ("EP", "Exoplanet transit"),
+    23: ("RCB", "R Coronae Borealis"),
+}
+
+
+def get_variability(source_id: int) -> dict[str, Any] | None:
+    """Look up variability classification from VariClassifierResult.
+
+    Args:
+        source_id: Gaia DR3 source identifier.
+
+    Returns:
+        Dictionary with best_class_name, best_class_description,
+        and best_class_score, or None.
+    """
+    healpix = healpix_from_source_id(source_id)
+    filepath = _get_vari_index().find_file(healpix)
+    if filepath is None:
+        return None
+
+    try:
+        with h5py.File(filepath, "r") as f:
+            source_ids = f["source_id"][:]
+            mask = source_ids == source_id
+            if not np.any(mask):
+                return None
+
+            idx = int(np.flatnonzero(mask)[0])
+            result: dict[str, Any] = {}
+
+            # Read class index (stored as int8) and decode to name
+            if "best_class_name" in f:
+                class_idx = int(f["best_class_name"][idx])
+                if class_idx in _VARI_CLASS_NAMES:
+                    name, desc = _VARI_CLASS_NAMES[class_idx]
+                    result["best_class_name"] = name
+                    result["best_class_description"] = desc
+                else:
+                    result["best_class_name"] = str(class_idx)
+                    result["best_class_description"] = None
+
+            # Read classifier score
+            if "best_class_score" in f:
+                score = float(f["best_class_score"][idx])
+                result["best_class_score"] = (
+                    None if np.isnan(score) else round(score, 4)
+                )
+
+        return result if result else None
+    except Exception as e:
+        logger.error(
+            "Failed to read VariClassifierResult for source_id=%d: %s", source_id, e
+        )
+        return None
+
+
+def _load_nss_index() -> tuple[np.ndarray, np.ndarray]:
+    """Load the NssTwoBodyOrbit source_id column and build a sorted index.
+
+    The NSS data lives in a single monolithic HDF5 file (not HEALPix-chunked).
+
+    Returns:
+        Tuple of (sorted_source_ids, sort_indices) for searchsorted lookup.
+    """
+    global _nss_source_ids, _nss_sort_idx
+    if _nss_source_ids is not None:
+        return _nss_source_ids, _nss_sort_idx
+
+    nss_file = NSS_ORBIT_DIR / "NssTwoBodyOrbit_1.hdf5"
+    logger.info("Loading NssTwoBodyOrbit source_id index from %s...", nss_file)
+    with h5py.File(nss_file, "r") as f:
+        raw_ids = f["source_id"][:]
+    sort_idx = np.argsort(raw_ids)
+    _nss_source_ids = raw_ids[sort_idx]
+    _nss_sort_idx = sort_idx
+    logger.info("NssTwoBodyOrbit index loaded: %d rows", len(_nss_source_ids))
+    return _nss_source_ids, _nss_sort_idx
+
+
+def get_nss_orbit(source_id: int) -> dict[str, Any] | None:
+    """Look up non-single-star two-body orbit from NssTwoBodyOrbit.
+
+    Args:
+        source_id: Gaia DR3 source identifier.
+
+    Returns:
+        Dictionary with orbital parameters, or None if not found.
+    """
+    nss_file = NSS_ORBIT_DIR / "NssTwoBodyOrbit_1.hdf5"
+    if not nss_file.exists():
+        return None
+
+    try:
+        sorted_ids, sort_idx = _load_nss_index()
+        pos = int(np.searchsorted(sorted_ids, source_id))
+        if pos >= len(sorted_ids) or sorted_ids[pos] != source_id:
+            return None
+
+        row_idx = int(sort_idx[pos])
+        with h5py.File(nss_file, "r") as f:
+            result: dict[str, Any] = {}
+
+            float_cols = ["period", "eccentricity", "semi_amplitude_primary"]
+            for col in float_cols:
+                if col in f:
+                    val = float(f[col][row_idx])
+                    result[col] = None if np.isnan(val) else round(val, 4)
+
+            str_cols = ["nss_solution_type"]
+            for col in str_cols:
+                if col in f:
+                    val = f[col][row_idx]
+                    if isinstance(val, bytes):
+                        val = val.decode("utf-8")
+                    result[col] = str(val)
+
+        return result if result else None
+    except Exception as e:
+        logger.error(
+            "Failed to read NssTwoBodyOrbit for source_id=%d: %s", source_id, e
+        )
         return None

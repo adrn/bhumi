@@ -243,3 +243,118 @@ def compute_orbit(source: dict[str, Any]) -> dict[str, Any] | None:
         "projections": projections,
         "params": params,
     }
+
+
+# ---------------------------------------------------------------------------
+# Stellar / orbit narrative
+# ---------------------------------------------------------------------------
+
+
+def _classify_stellar_type(teff: float | None, logg: float | None) -> str | None:
+    """Classify stellar type from T_eff (K) and log g (dex)."""
+    if teff is None or logg is None:
+        return None
+
+    if logg >= 6.0:
+        return "white dwarf"
+
+    # Spectral-type descriptor from temperature
+    if teff >= 7500:
+        spec = "OBA-type"
+    elif teff >= 6000:
+        spec = "FG-type"
+    elif teff >= 3800:
+        spec = "GK-type"
+    else:
+        spec = "M-type"
+
+    # Luminosity class from log g
+    if logg < 3.5:
+        # Check red clump first (narrow box)
+        if 4300 <= teff <= 5200 and 2.0 <= logg <= 2.8:
+            return "red clump giant"
+        return f"{spec} giant"
+    if logg < 4.0:
+        return f"{spec} subgiant"
+
+    # Dwarfs (logg >= 4.0)
+    return f"{spec} dwarf"
+
+
+def _classify_orbit(
+    vphi: float | None, ecc: float | None, zmax: float | None
+) -> str | None:
+    """Build an orbit description from v_phi, eccentricity, and z_max."""
+    if vphi is None or ecc is None:
+        return None
+
+    parts: list[str] = []
+
+    # flip vphi for checks:
+    vphi = -vphi
+
+    # Eccentricity descriptor
+    if ecc < 0.15:
+        parts.append("nearly circular")
+    elif ecc < 0.3:
+        parts.append("mildly eccentric")
+    elif ecc < 0.55:
+        parts.append("eccentric")
+    else:
+        parts.append("highly eccentric")
+
+    # Direction
+    if vphi < 0:
+        parts.append("retrograde")
+
+    # Population
+    if vphi < 0 or (ecc > 0.5) or (zmax is not None and zmax > 5.0):
+        parts.append("halo-like orbit")
+    elif vphi > 180 and ecc < 0.25 and (zmax is None or zmax < 1.0):
+        parts.append("thin disk-like orbit")
+    else:
+        parts.append("thick disk-like orbit")
+
+    return ", ".join(parts)
+
+
+def generate_narrative(
+    zhang: dict[str, Any] | None,
+    galcen: dict[str, Any] | None,
+    orbit_params: dict[str, Any] | None,
+) -> str | None:
+    """Generate a one-sentence narrative description of the star.
+
+    Args:
+        zhang: Zhang, Green & Rix 2023 catalog parameters (or None).
+        galcen: Galactocentric velocity dict from compute_galactocentric.
+        orbit_params: Orbital parameters dict from compute_orbit.
+
+    Returns:
+        A narrative string, or None if insufficient data.
+    """
+    stellar = None
+    if zhang is not None:
+        stellar = _classify_stellar_type(
+            zhang.get("zhang_teff"), zhang.get("zhang_logg")
+        )
+
+    vphi = None
+    if galcen is not None:
+        vphi = galcen.get("cylindrical", {}).get("v_phi_km_s")
+
+    ecc = None
+    zmax = None
+    if orbit_params is not None:
+        ecc = orbit_params.get("eccentricity")
+        zmax = orbit_params.get("zmax_kpc")
+
+    orbit_desc = _classify_orbit(vphi, ecc, zmax)
+
+    if stellar and orbit_desc:
+        return f"This may be a {stellar} on a {orbit_desc}."
+    if stellar:
+        return f"This may be a {stellar}."
+    if orbit_desc:
+        return f"This star may be on a {orbit_desc}."
+    return None

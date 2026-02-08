@@ -93,6 +93,28 @@ body {
   background: var(--accent-bright);
 }
 
+.random-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.random-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.random-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
 .error {
   color: var(--error);
   margin-top: 1rem;
@@ -123,6 +145,30 @@ header {
   color: var(--text-dim);
 }
 
+/* External link buttons */
+.external-links {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.ext-link-btn {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ext-link-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
 /* Main content */
 main {
   max-width: 1100px;
@@ -137,6 +183,17 @@ main {
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+}
+
+/* Narrative summary */
+.narrative {
+  font-size: 1.05rem;
+  color: var(--text);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  background: var(--card-bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
 }
 
 .card h2 {
@@ -193,6 +250,20 @@ main {
   .two-col-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Stellar parameters comparison table */
+.stellar-params-table th {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.stellar-params-table th:first-child {
+  width: 160px;
 }
 
 .snr {

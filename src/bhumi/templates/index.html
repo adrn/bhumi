@@ -23,9 +23,29 @@
         <button type="submit" class="search-btn">Look up</button>
       </form>
 
+      <button class="random-btn" onclick="loadRandom()">Random star ✦</button>
+
       {% if error %}
       <p class="error">{{ error }}</p>
       {% endif %}
     </div>
+
+    <script>
+      async function loadRandom() {
+        const btn = document.querySelector(".random-btn");
+        btn.disabled = true;
+        btn.textContent = "Finding a star…";
+        try {
+          const resp = await fetch("/api/random");
+          const data = await resp.json();
+          if (data.source_id) {
+            window.location.href = `/?source_id=${data.source_id}`;
+          }
+        } catch (e) {
+          btn.textContent = "Random star ✦";
+          btn.disabled = false;
+        }
+      }
+    </script>
   </body>
 </html>

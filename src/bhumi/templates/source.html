@@ -14,9 +14,29 @@
     <header>
       <a href="/" class="home-link">Bhumi</a>
       <span class="source-id-header">Gaia DR3 {{ source_id }}</span>
+      <div class="external-links">
+        <a
+          href="https://simbad.u-strasbg.fr/simbad/sim-id?Ident=Gaia+DR3+{{ source_id }}"
+          target="_blank"
+          rel="noopener"
+          class="ext-link-btn"
+          >SIMBAD</a
+        >
+        <a
+          href="https://www.legacysurvey.org/viewer?ra={{ source.ra }}&dec={{ source.dec }}&layer=ls-dr10&zoom=16"
+          target="_blank"
+          rel="noopener"
+          class="ext-link-btn"
+          >Legacy Survey</a
+        >
+      </div>
     </header>
 
     <main>
+      {% if narrative %}
+      <p class="narrative">{{ narrative }}</p>
+      {% endif %}
+
       <!-- Astrometry Section -->
       <section class="card">
         <h2>Astrometry</h2>
@@ -201,11 +221,178 @@
         </div>
       </section>
 
+      <!-- XP Sampled Spectrum Section (conditionally shown) -->
+      <section class="card" id="xp-section">
+        <h2>XP Sampled Spectrum (BP/RP)</h2>
+        <div id="xp-plot" class="plot-container">
+          <p class="loading">Checking for XP spectrum...</p>
+        </div>
+      </section>
+
+      <!-- Stellar Parameters (value-added catalogs) -->
+      {% if andrae or zhang %}
+      <section class="card">
+        <h2>Stellar Parameters</h2>
+        <table class="data-table stellar-params-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Andrae+2023</th>
+              <th>Zhang, Green &amp; Rix 2023</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="label">T<sub>eff</sub></td>
+              <td>
+                {% if andrae and andrae.teff_xgboost is not none %}
+                  {{ "%.0f"|format(andrae.teff_xgboost) }} K
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {% if zhang and zhang.zhang_teff is not none %}
+                  {{ "%.0f"|format(zhang.zhang_teff) }}
+                  {% if zhang.zhang_teff_err is not none %} ± {{ "%.0f"|format(zhang.zhang_teff_err) }}{% endif %}
+                  K
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="label">log g</td>
+              <td>
+                {% if andrae and andrae.logg_xgboost is not none %}
+                  {{ "%.3f"|format(andrae.logg_xgboost) }} dex
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {% if zhang and zhang.zhang_logg is not none %}
+                  {{ "%.3f"|format(zhang.zhang_logg) }}
+                  {% if zhang.zhang_logg_err is not none %} ± {{ "%.3f"|format(zhang.zhang_logg_err) }}{% endif %}
+                  dex
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="label">[M/H] · [Fe/H]</td>
+              <td>
+                {% if andrae and andrae.mh_xgboost is not none %}
+                  [M/H] = {{ "%.3f"|format(andrae.mh_xgboost) }} dex
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {% if zhang and zhang.zhang_feh is not none %}
+                  [Fe/H] = {{ "%.3f"|format(zhang.zhang_feh) }}
+                  {% if zhang.zhang_feh_err is not none %} ± {{ "%.3f"|format(zhang.zhang_feh_err) }}{% endif %}
+                  dex
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% if zhang and zhang.zhang_extinction is not none %}
+            <tr>
+              <td class="label">Extinction E</td>
+              <td>—</td>
+              <td>
+                {{ "%.3f"|format(zhang.zhang_extinction) }}
+                {% if zhang.zhang_extinction_err is not none %} ± {{ "%.3f"|format(zhang.zhang_extinction_err) }}{% endif %}
+                mag
+              </td>
+            </tr>
+            {% endif %}
+            {% if zhang and zhang.zhang_parallax is not none %}
+            <tr>
+              <td class="label">ϖ (spectrophot.)</td>
+              <td>—</td>
+              <td>
+                {{ "%.4f"|format(zhang.zhang_parallax) }}
+                {% if zhang.zhang_parallax_err is not none %} ± {{ "%.4f"|format(zhang.zhang_parallax_err) }}{% endif %}
+                mas
+                {% if zhang.zhang_distance_kpc is not none %}
+                  → {{ "%.4f"|format(zhang.zhang_distance_kpc) }} kpc
+                {% endif %}
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </section>
+      {% endif %}
+
+      <!-- Variability & Multiplicity -->
+      <section class="card">
+        <h2>Variability &amp; Multiplicity</h2>
+
+        {% if variability %}
+        <h3>Variability Classification</h3>
+        <table class="data-table">
+          <tbody>
+            {% if variability.best_class_name is defined %}
+            <tr>
+              <td class="label">Classification</td>
+              <td>
+                {{ variability.best_class_name }}
+                {% if variability.best_class_description %}
+                  <span class="note" style="margin-left: 0.5em">({{ variability.best_class_description }})</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endif %}
+            {% if variability.best_class_score is not none %}
+            <tr>
+              <td class="label">Classifier score</td>
+              <td>{{ "%.4f"|format(variability.best_class_score) }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="note">No variability detected in Gaia DR3.</p>
+        {% endif %}
+
+        {% if nss_orbit %}
+        <h3>Non-Single-Star Orbit</h3>
+        <table class="data-table">
+          <tbody>
+            {% if nss_orbit.nss_solution_type is defined %}
+            <tr>
+              <td class="label">Solution type</td>
+              <td>{{ nss_orbit.nss_solution_type }}</td>
+            </tr>
+            {% endif %}
+            {% if nss_orbit.period is not none %}
+            <tr>
+              <td class="label">Period</td>
+              <td>{{ "%.4f"|format(nss_orbit.period) }} days</td>
+            </tr>
+            {% endif %}
+            {% if nss_orbit.eccentricity is not none %}
+            <tr>
+              <td class="label">Eccentricity</td>
+              <td>{{ "%.4f"|format(nss_orbit.eccentricity) }}</td>
+            </tr>
+            {% endif %}
+            {% if nss_orbit.semi_amplitude_primary is not none %}
+            <tr>
+              <td class="label">Semi-amplitude</td>
+              <td>{{ "%.4f"|format(nss_orbit.semi_amplitude_primary) }} km/s</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+        {% elif not variability %}
+        <p class="note">
+          This source has no variability flag or non-single-star solution in
+          Gaia DR3, suggesting it is likely a non-variable single star.
+        </p>
+        {% else %}
+        <p class="note">No non-single-star solution in Gaia DR3.</p>
+        {% endif %}
+      </section>
+
       <!-- Orbit Section (only if 6D) -->
       {% if source.has_6d %}
       <section class="card">
         <h2>Galactic Orbit</h2>
-        <p class="note">Integrated 8 Gyr backward in MilkyWayPotential v2.</p>
+        <p class="note">Integrated 8 Gyr backward in <a href="https://gala.adrian.pw">Gala's MilkyWayPotential v2</a>.</p>
 
         <div id="orbit-loading" class="loading">Computing orbit...</div>
 

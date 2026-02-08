@@ -64,16 +64,70 @@ async def index(
         )
 
     enriched = science.compute_derived_quantities(source)
+
+    # Fetch value-added catalog data and variability/multiplicity info
+    try:
+        andrae = data.get_andrae_params(source_id_int)
+    except Exception:
+        logger.exception("Andrae lookup failed for %d", source_id_int)
+        andrae = None
+    try:
+        zhang = data.get_zhang_params(source_id_int)
+    except Exception:
+        logger.exception("Zhang lookup failed for %d", source_id_int)
+        zhang = None
+    try:
+        variability = data.get_variability(source_id_int)
+    except Exception:
+        logger.exception("Variability lookup failed for %d", source_id_int)
+        variability = None
+    try:
+        nss_orbit = data.get_nss_orbit(source_id_int)
+    except Exception:
+        logger.exception("NSS orbit lookup failed for %d", source_id_int)
+        nss_orbit = None
+
+    # Compute orbit server-side for the narrative description
+    galcen = None
+    orbit_params = None
+    if enriched.get("has_6d"):
+        try:
+            galcen = science.compute_galactocentric(enriched)
+            orbit_result = science.compute_orbit(enriched)
+            if orbit_result is not None:
+                orbit_params = orbit_result["params"]
+        except Exception:
+            logger.exception("Server-side orbit failed for %d", source_id_int)
+
+    narrative = science.generate_narrative(zhang, galcen, orbit_params)
+
     return templates.TemplateResponse(
         request,
         "source.html",
-        {"source": enriched, "source_id": source_id_int},
+        {
+            "source": enriched,
+            "source_id": source_id_int,
+            "andrae": andrae,
+            "zhang": zhang,
+            "variability": variability,
+            "nss_orbit": nss_orbit,
+            "narrative": narrative,
+        },
     )
 
 
 # ---------------------------------------------------------------------------
 # JSON API endpoints (called by frontend JS for plots)
 # ---------------------------------------------------------------------------
+
+
+@app.get("/api/random")
+async def api_random() -> dict:
+    """Return a random source_id from the Gaia DR3 data."""
+    source_id = data.get_random_source_id()
+    if source_id is None:
+        raise HTTPException(status_code=500, detail="Could not pick a random source")
+    return {"source_id": str(source_id)}
 
 
 @app.get("/api/source/{source_id}")
@@ -108,6 +162,20 @@ async def api_rvs(source_id: int) -> dict:
     result = data.get_rvs_spectrum(source_id, has_rvs=has_rvs)
     if result is None:
         raise HTTPException(status_code=404, detail="No RVS spectrum available")
+    return result
+
+
+@app.get("/api/xp/{source_id}")
+async def api_xp(source_id: int) -> dict:
+    """Return the XP sampled mean spectrum, if available."""
+    source = data.get_source(source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    has_xp = source.get("has_xp_continuous")
+    result = data.get_xp_spectrum(source_id, has_xp_continuous=has_xp)
+    if result is None:
+        raise HTTPException(status_code=404, detail="No XP spectrum available")
     return result
 
 
