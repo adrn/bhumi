@@ -1,3 +1,3 @@
 # Bhumi
 
-A web viewer for *Gaia* data.
+A web viewer for _Gaia_ data.

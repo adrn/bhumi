@@ -1,259 +1,248 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bhumi — Gaia DR3 {{ source_id }}</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
-</head>
-<body>
+    <link rel="stylesheet" href="/static/style.css" />
+    <script
+      src="https://cdn.plot.ly/plotly-2.35.2.min.js"
+      charset="utf-8"
+    ></script>
+  </head>
+  <body>
     <header>
-        <a href="/" class="home-link">Bhumi</a>
-        <span class="source-id-header">Gaia DR3 {{ source_id }}</span>
+      <a href="/" class="home-link">Bhumi</a>
+      <span class="source-id-header">Gaia DR3 {{ source_id }}</span>
     </header>
 
     <main>
-        <!-- Astrometry Section -->
-        <section class="card">
-            <h2>Astrometry</h2>
-            <div class="two-col-grid">
-                <table class="data-table">
-                    <tbody>
-                        <tr>
-                            <td class="label">RA, Dec (ICRS)</td>
-                            <td>{{ "%.6f"|format(source.ra) }}°, {{ "%.6f"|format(source.dec) }}°</td>
-                        </tr>
-                        <tr>
-                            <td class="label">l, b (Galactic)</td>
-                            <td>{{ "%.6f"|format(source.l) }}°, {{ "%.6f"|format(source.b) }}°</td>
-                        </tr>
-                        <tr>
-                            <td class="label">Parallax</td>
-                            <td>
-                                {% if source.parallax is not none %}
-                                    {{ "%.4f"|format(source.parallax) }}
-                                    {% if source.parallax_error is not none %}
-                                        ± {{ "%.4f"|format(source.parallax_error) }}
-                                    {% endif %}
-                                    mas
-                                    {% if source.parallax_over_error is not none %}
-                                        <span class="snr">(S/N = {{ "%.1f"|format(source.parallax_over_error) }})</span>
-                                    {% endif %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label">Distance</td>
-                            <td>
-                                {% if source.distance_kpc is not none %}
-                                    {{ "%.4f"|format(source.distance_kpc) }} kpc
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label">Distance modulus</td>
-                            <td>
-                                {% if source.distance_modulus is not none %}
-                                    {{ "%.3f"|format(source.distance_modulus) }} mag
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <table class="data-table">
-                    <tbody>
-                        <tr>
-                            <td class="label">μ<sub>α*</sub></td>
-                            <td>
-                                {% if source.pmra is not none %}
-                                    {{ "%.4f"|format(source.pmra) }}
-                                    {% if source.pmra_error is not none %}
-                                        ± {{ "%.4f"|format(source.pmra_error) }}
-                                    {% endif %}
-                                    mas/yr
-                                    {% if source.pmra_snr is not none %}
-                                        <span class="snr">(S/N = {{ "%.1f"|format(source.pmra_snr) }})</span>
-                                    {% endif %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label">μ<sub>δ</sub></td>
-                            <td>
-                                {% if source.pmdec is not none %}
-                                    {{ "%.4f"|format(source.pmdec) }}
-                                    {% if source.pmdec_error is not none %}
-                                        ± {{ "%.4f"|format(source.pmdec_error) }}
-                                    {% endif %}
-                                    mas/yr
-                                    {% if source.pmdec_snr is not none %}
-                                        <span class="snr">(S/N = {{ "%.1f"|format(source.pmdec_snr) }})</span>
-                                    {% endif %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label">Total PM / v<sub>tan</sub></td>
-                            <td>
-                                {% if source.pm_total is not none %}
-                                    {{ "%.4f"|format(source.pm_total) }} mas/yr
-                                    {% if source.v_tan_km_s is not none %}
-                                        → {{ "%.2f"|format(source.v_tan_km_s) }} km/s
-                                    {% endif %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label">Radial velocity</td>
-                            <td>
-                                {% if source.has_radial_velocity %}
-                                    {{ "%.2f"|format(source.radial_velocity) }}
-                                    {% if source.radial_velocity_error is not none %}
-                                        ± {{ "%.2f"|format(source.radial_velocity_error) }}
-                                    {% endif %}
-                                    km/s
-                                    {% if source.rv_snr is not none %}
-                                        <span class="snr">(S/N = {{ "%.1f"|format(source.rv_snr) }})</span>
-                                    {% endif %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% if source.ruwe is not none %}
-                        <tr>
-                            <td class="label">RUWE</td>
-                            <td>{{ "%.2f"|format(source.ruwe) }}</td>
-                        </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
+      <!-- Astrometry Section -->
+      <section class="card">
+        <h2>Astrometry</h2>
+        <div class="two-col-grid">
+          <table class="data-table">
+            <tbody>
+              <tr>
+                <td class="label">RA, Dec (ICRS)</td>
+                <td>
+                  {{ "%.6f"|format(source.ra) }}°, {{ "%.6f"|format(source.dec)
+                  }}°
+                </td>
+              </tr>
+              <tr>
+                <td class="label">l, b (Galactic)</td>
+                <td>
+                  {{ "%.6f"|format(source.l) }}°, {{ "%.6f"|format(source.b) }}°
+                </td>
+              </tr>
+              <tr>
+                <td class="label">Parallax</td>
+                <td>
+                  {% if source.parallax is not none %} {{
+                  "%.4f"|format(source.parallax) }} {% if source.parallax_error
+                  is not none %} ± {{ "%.4f"|format(source.parallax_error) }} {%
+                  endif %} mas {% if source.parallax_over_error is not none %}
+                  <span class="snr"
+                    >(S/N = {{ "%.1f"|format(source.parallax_over_error)
+                    }})</span
+                  >
+                  {% endif %} {% else %} — {% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td class="label">Distance</td>
+                <td>
+                  {% if source.distance_kpc is not none %} {{
+                  "%.4f"|format(source.distance_kpc) }} kpc {% else %} — {%
+                  endif %}
+                </td>
+              </tr>
+              <tr>
+                <td class="label">Distance modulus</td>
+                <td>
+                  {% if source.distance_modulus is not none %} {{
+                  "%.3f"|format(source.distance_modulus) }} mag {% else %} — {%
+                  endif %}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <table class="data-table">
+            <tbody>
+              <tr>
+                <td class="label">μ<sub>α*</sub></td>
+                <td>
+                  {% if source.pmra is not none %} {{ "%.4f"|format(source.pmra)
+                  }} {% if source.pmra_error is not none %} ± {{
+                  "%.4f"|format(source.pmra_error) }} {% endif %} mas/yr {% if
+                  source.pmra_snr is not none %}
+                  <span class="snr"
+                    >(S/N = {{ "%.1f"|format(source.pmra_snr) }})</span
+                  >
+                  {% endif %} {% else %} — {% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td class="label">μ<sub>δ</sub></td>
+                <td>
+                  {% if source.pmdec is not none %} {{
+                  "%.4f"|format(source.pmdec) }} {% if source.pmdec_error is not
+                  none %} ± {{ "%.4f"|format(source.pmdec_error) }} {% endif %}
+                  mas/yr {% if source.pmdec_snr is not none %}
+                  <span class="snr"
+                    >(S/N = {{ "%.1f"|format(source.pmdec_snr) }})</span
+                  >
+                  {% endif %} {% else %} — {% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td class="label">Total PM / v<sub>tan</sub></td>
+                <td>
+                  {% if source.pm_total is not none %} {{
+                  "%.4f"|format(source.pm_total) }} mas/yr {% if
+                  source.v_tan_km_s is not none %} → {{
+                  "%.2f"|format(source.v_tan_km_s) }} km/s {% endif %} {% else
+                  %} — {% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td class="label">Radial velocity</td>
+                <td>
+                  {% if source.has_radial_velocity %} {{
+                  "%.2f"|format(source.radial_velocity) }} {% if
+                  source.radial_velocity_error is not none %} ± {{
+                  "%.2f"|format(source.radial_velocity_error) }} {% endif %}
+                  km/s {% if source.rv_snr is not none %}
+                  <span class="snr"
+                    >(S/N = {{ "%.1f"|format(source.rv_snr) }})</span
+                  >
+                  {% endif %} {% else %} — {% endif %}
+                </td>
+              </tr>
+              {% if source.ruwe is not none %}
+              <tr>
+                <td class="label">RUWE</td>
+                <td>{{ "%.2f"|format(source.ruwe) }}</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Photometry Section -->
+      <section class="card">
+        <h2>Photometry</h2>
+        <div class="two-col-grid">
+          <table class="data-table">
+            <tbody>
+              <tr>
+                <td class="label">G</td>
+                <td>
+                  {% if source.phot_g_mean_mag is not none %} {{
+                  "%.3f"|format(source.phot_g_mean_mag) }} mag {% else %}—{%
+                  endif %}
+                </td>
+              </tr>
+              <tr>
+                <td class="label">BP</td>
+                <td>
+                  {% if source.phot_bp_mean_mag is not none %} {{
+                  "%.3f"|format(source.phot_bp_mean_mag) }} mag {% else %}—{%
+                  endif %}
+                </td>
+              </tr>
+              <tr>
+                <td class="label">RP</td>
+                <td>
+                  {% if source.phot_rp_mean_mag is not none %} {{
+                  "%.3f"|format(source.phot_rp_mean_mag) }} mag {% else %}—{%
+                  endif %}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <table class="data-table">
+            <tbody>
+              <tr>
+                <td class="label">BP − RP</td>
+                <td>
+                  {% if source.phot_bp_mean_mag is not none and
+                  source.phot_rp_mean_mag is not none %} {{
+                  "%.3f"|format(source.phot_bp_mean_mag -
+                  source.phot_rp_mean_mag) }} mag {% else %}—{% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td class="label">G − RP</td>
+                <td>
+                  {% if source.phot_g_mean_mag is not none and
+                  source.phot_rp_mean_mag is not none %} {{
+                  "%.3f"|format(source.phot_g_mean_mag -
+                  source.phot_rp_mean_mag) }} mag {% else %}—{% endif %}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Color–Magnitude Diagram (nearby stars)</h3>
+        <div id="cmd-plot" class="plot-container">
+          <p class="loading">Loading CMD...</p>
+        </div>
+      </section>
+
+      <!-- RVS Spectrum Section (conditionally shown) -->
+      <section class="card" id="rvs-section">
+        <h2>RVS Spectrum</h2>
+        <div id="rvs-plot" class="plot-container">
+          <p class="loading">Checking for RVS spectrum...</p>
+        </div>
+      </section>
+
+      <!-- Orbit Section (only if 6D) -->
+      {% if source.has_6d %}
+      <section class="card">
+        <h2>Galactic Orbit</h2>
+        <p class="note">Integrated 8 Gyr backward in MilkyWayPotential v2.</p>
+
+        <div id="orbit-loading" class="loading">Computing orbit...</div>
+
+        <div id="orbit-plots" class="orbit-grid" style="display: none">
+          <div id="orbit-xy" class="plot-container"></div>
+          <div id="orbit-xz" class="plot-container"></div>
+          <div id="orbit-Rz" class="plot-container"></div>
+        </div>
+
+        <div id="galcen-section" style="display: none">
+          <h3>Galactocentric Velocities</h3>
+          <div class="velocity-tables">
+            <div>
+              <h4>Cartesian</h4>
+              <table class="data-table" id="vel-cartesian"></table>
             </div>
-        </section>
-
-        <!-- Photometry Section -->
-        <section class="card">
-            <h2>Photometry</h2>
-            <div class="two-col-grid">
-                <table class="data-table">
-                    <tbody>
-                        <tr>
-                            <td class="label">G</td>
-                            <td>
-                                {% if source.phot_g_mean_mag is not none %}
-                                    {{ "%.3f"|format(source.phot_g_mean_mag) }} mag
-                                {% else %}—{% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label">BP</td>
-                            <td>
-                                {% if source.phot_bp_mean_mag is not none %}
-                                    {{ "%.3f"|format(source.phot_bp_mean_mag) }} mag
-                                {% else %}—{% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label">RP</td>
-                            <td>
-                                {% if source.phot_rp_mean_mag is not none %}
-                                    {{ "%.3f"|format(source.phot_rp_mean_mag) }} mag
-                                {% else %}—{% endif %}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <table class="data-table">
-                    <tbody>
-                        <tr>
-                            <td class="label">BP − RP</td>
-                            <td>
-                                {% if source.phot_bp_mean_mag is not none and source.phot_rp_mean_mag is not none %}
-                                    {{ "%.3f"|format(source.phot_bp_mean_mag - source.phot_rp_mean_mag) }} mag
-                                {% else %}—{% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label">G − RP</td>
-                            <td>
-                                {% if source.phot_g_mean_mag is not none and source.phot_rp_mean_mag is not none %}
-                                    {{ "%.3f"|format(source.phot_g_mean_mag - source.phot_rp_mean_mag) }} mag
-                                {% else %}—{% endif %}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div>
+              <h4>Cylindrical</h4>
+              <table class="data-table" id="vel-cylindrical"></table>
             </div>
+          </div>
 
-            <h3>Color–Magnitude Diagram (nearby stars)</h3>
-            <div id="cmd-plot" class="plot-container">
-                <p class="loading">Loading CMD...</p>
-            </div>
-        </section>
-
-        <!-- RVS Spectrum Section (conditionally shown) -->
-        <section class="card" id="rvs-section">
-            <h2>RVS Spectrum</h2>
-            <div id="rvs-plot" class="plot-container">
-                <p class="loading">Checking for RVS spectrum...</p>
-            </div>
-        </section>
-
-        <!-- Orbit Section (only if 6D) -->
-        {% if source.has_6d %}
-        <section class="card">
-            <h2>Galactic Orbit</h2>
-            <p class="note">Integrated 8 Gyr backward in MilkyWayPotential v2.</p>
-
-            <div id="orbit-loading" class="loading">Computing orbit...</div>
-
-            <div id="orbit-plots" class="orbit-grid" style="display:none;">
-                <div id="orbit-xy" class="plot-container"></div>
-                <div id="orbit-xz" class="plot-container"></div>
-                <div id="orbit-Rz" class="plot-container"></div>
-            </div>
-
-            <div id="galcen-section" style="display:none;">
-                <h3>Galactocentric Velocities</h3>
-                <div class="velocity-tables">
-                    <div>
-                        <h4>Cartesian</h4>
-                        <table class="data-table" id="vel-cartesian"></table>
-                    </div>
-                    <div>
-                        <h4>Cylindrical</h4>
-                        <table class="data-table" id="vel-cylindrical"></table>
-                    </div>
-                </div>
-
-                <h3>Orbital Parameters</h3>
-                <table class="data-table" id="orbit-params"></table>
-            </div>
-        </section>
-        {% endif %}
+          <h3>Orbital Parameters</h3>
+          <table class="data-table" id="orbit-params"></table>
+        </div>
+      </section>
+      {% endif %}
     </main>
 
     <footer>
-        <p>Bhumi · Gaia DR3 source viewer · Data from ESA/Gaia/DPAC</p>
+      <p>Bhumi · Gaia DR3 source viewer · Data from ESA/Gaia/DPAC</p>
     </footer>
 
     <script>
-        const SOURCE_ID = "{{ source_id }}";
-        const HAS_6D = {{ source.has_6d | tojson }};
+      const SOURCE_ID = "{{ source_id }}";
+      const HAS_6D = {{ source.has_6d | tojson }};
     </script>
     <script src="/static/app.js"></script>
-</body>
+  </body>
 </html>

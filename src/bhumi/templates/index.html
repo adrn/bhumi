@@ -1,31 +1,31 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bhumi — Gaia DR3 Viewer</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
     <div class="landing">
-        <h1>Bhumi</h1>
-        <p class="subtitle">Gaia DR3 Source Viewer</p>
+      <h1>Bhumi</h1>
+      <p class="subtitle">Gaia DR3 Source Viewer</p>
 
-        <form action="/" method="get" class="search-form">
-            <input
-                type="text"
-                name="source_id"
-                placeholder="Enter Gaia DR3 source_id"
-                autofocus
-                required
-                class="search-input"
-            >
-            <button type="submit" class="search-btn">Look up</button>
-        </form>
+      <form action="/" method="get" class="search-form">
+        <input
+          type="text"
+          name="source_id"
+          placeholder="Enter Gaia DR3 source_id"
+          autofocus
+          required
+          class="search-input"
+        />
+        <button type="submit" class="search-btn">Look up</button>
+      </form>
 
-        {% if error %}
-        <p class="error">{{ error }}</p>
-        {% endif %}
+      {% if error %}
+      <p class="error">{{ error }}</p>
+      {% endif %}
     </div>
-</body>
+  </body>
 </html>
