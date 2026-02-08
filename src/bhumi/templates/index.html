@@ -23,7 +23,11 @@
         <button type="submit" class="search-btn">Look up</button>
       </form>
 
-      <button class="random-btn" onclick="loadRandom()">Random star ✦</button>
+      <div class="random-buttons">
+        <button class="random-btn" onclick="loadRandom(this, '/api/random')">Random star ✦</button>
+        <button class="random-btn" onclick="loadRandom(this, '/api/random/spectra')">Random star with spectra</button>
+        <button class="random-btn" onclick="loadRandom(this, '/api/random/orbit')">Random star with orbit</button>
+      </div>
 
       {% if error %}
       <p class="error">{{ error }}</p>
@@ -31,18 +35,18 @@
     </div>
 
     <script>
-      async function loadRandom() {
-        const btn = document.querySelector(".random-btn");
+      async function loadRandom(btn, endpoint) {
+        const label = btn.textContent;
         btn.disabled = true;
         btn.textContent = "Finding a star…";
         try {
-          const resp = await fetch("/api/random");
+          const resp = await fetch(endpoint);
           const data = await resp.json();
           if (data.source_id) {
             window.location.href = `/?source_id=${data.source_id}`;
           }
         } catch (e) {
-          btn.textContent = "Random star ✦";
+          btn.textContent = label;
           btn.disabled = false;
         }
       }

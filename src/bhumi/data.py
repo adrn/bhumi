@@ -213,6 +213,78 @@ def get_random_source_id() -> int | None:
         return None
 
 
+def get_random_source_id_with_spectra(max_attempts: int = 20) -> int | None:
+    """Pick a random source_id that has both RVS and XP spectra.
+
+    Picks from RVS spectrum files (sources there already have RVS), then
+    checks the corresponding GaiaSource file for has_xp_continuous.
+
+    Returns:
+        A random Gaia DR3 source_id, or None on failure.
+    """
+    rvs_idx = _get_rvs_index()
+    xp_idx = _get_xp_index()
+    if not rvs_idx._ranges or not xp_idx._ranges:
+        return None
+
+    rng = np.random.default_rng()
+    for _ in range(max_attempts):
+        # Pick a random source from a random RVS file
+        _, _, rvs_path = rvs_idx._ranges[rng.integers(len(rvs_idx._ranges))]
+        try:
+            with h5py.File(rvs_path, "r") as f:
+                n = len(f["source_id"])
+                sid = int(f["source_id"][rng.integers(n)])
+
+            # Check if the same source exists in XP files
+            healpix = healpix_from_source_id(sid)
+            xp_path = xp_idx.find_file(healpix)
+            if xp_path is None:
+                continue
+            with h5py.File(xp_path, "r") as f:
+                if sid in f["source_id"][:]:
+                    return sid
+        except Exception as e:
+            logger.error("Random spectra pick failed: %s", e)
+            continue
+    return None
+
+
+def get_random_source_id_with_orbit(max_attempts: int = 20) -> int | None:
+    """Pick a random source_id that has full 6D phase-space info.
+
+    Picks from RVS spectrum files (sources there have radial velocities),
+    then spot-checks parallax > 0 from GaiaSource.
+
+    Returns:
+        A random Gaia DR3 source_id, or None on failure.
+    """
+    rvs_idx = _get_rvs_index()
+    if not rvs_idx._ranges:
+        return None
+
+    rng = np.random.default_rng()
+    for _ in range(max_attempts):
+        _, _, rvs_path = rvs_idx._ranges[rng.integers(len(rvs_idx._ranges))]
+        try:
+            with h5py.File(rvs_path, "r") as f:
+                n = len(f["source_id"])
+                row = rng.integers(n)
+                sid = int(f["source_id"][row])
+
+            # Spot-check that the source has positive parallax
+            source = get_source(sid)
+            if source is None:
+                continue
+            plx = source.get("parallax")
+            if plx is not None and plx > 0 and source.get("pmra") is not None:
+                return sid
+        except Exception as e:
+            logger.error("Random orbit pick failed: %s", e)
+            continue
+    return None
+
+
 def get_source(source_id: int) -> dict[str, Any] | None:
     """Read a single Gaia source by source_id from the HDF5 store.
 

@@ -130,6 +130,28 @@ async def api_random() -> dict:
     return {"source_id": str(source_id)}
 
 
+@app.get("/api/random/spectra")
+async def api_random_spectra() -> dict:
+    """Return a random source_id that has both RVS and XP spectra."""
+    source_id = data.get_random_source_id_with_spectra()
+    if source_id is None:
+        raise HTTPException(
+            status_code=500, detail="Could not find a random source with spectra"
+        )
+    return {"source_id": str(source_id)}
+
+
+@app.get("/api/random/orbit")
+async def api_random_orbit() -> dict:
+    """Return a random source_id that has full 6D phase-space info."""
+    source_id = data.get_random_source_id_with_orbit()
+    if source_id is None:
+        raise HTTPException(
+            status_code=500, detail="Could not find a random source with orbit"
+        )
+    return {"source_id": str(source_id)}
+
+
 @app.get("/api/source/{source_id}")
 async def api_source(source_id: int) -> dict:
     """Return source astrometry and derived quantities as JSON."""
