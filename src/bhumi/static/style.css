@@ -177,6 +177,16 @@ header {
   color: var(--bg);
 }
 
+.notebook-btn {
+  color: var(--highlight);
+  border-color: var(--highlight);
+}
+
+.notebook-btn:hover {
+  background: var(--highlight);
+  color: var(--bg);
+}
+
 /* Main content */
 main {
   max-width: 1100px;

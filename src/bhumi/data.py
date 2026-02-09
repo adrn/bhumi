@@ -7,6 +7,7 @@ retrieval from the local HDF5 file store.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -15,8 +16,10 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Root path to the Gaia DR3 HDF5 data store
-GAIA_DATA_ROOT = Path("/mnt/ceph/users/gaia/dr3/hdf5")
+# Root path to the Gaia DR3 HDF5 data store (configurable via env vars)
+GAIA_DATA_ROOT = Path(
+    os.environ.get("BHUMI_GAIA_DATA_ROOT", "/mnt/ceph/users/gaia/dr3/hdf5")
+)
 GAIA_SOURCE_DIR = GAIA_DATA_ROOT / "GaiaSource"
 RVS_SPECTRUM_DIR = GAIA_DATA_ROOT / "RvsMeanSpectrum"
 XP_SPECTRUM_DIR = GAIA_DATA_ROOT / "XpSampledMeanSpectrum"
@@ -25,10 +28,16 @@ NSS_ORBIT_DIR = GAIA_DATA_ROOT / "NssTwoBodyOrbit"
 
 # Value-added catalog paths
 ANDRAE_CATALOG_PATH = Path(
-    "/mnt/home/apricewhelan/data/Gaia/vac/Andrae2023/table_1_catwise.fits"
+    os.environ.get(
+        "BHUMI_ANDRAE_CATALOG",
+        "/mnt/home/apricewhelan/data/Gaia/vac/Andrae2023/table_1_catwise.fits",
+    )
 )
 ZHANG_CATALOG_PATH = Path(
-    "/mnt/home/apricewhelan/data/Gaia/vac/Zhang2023/stellar_params_catalog_joined.h5"
+    os.environ.get(
+        "BHUMI_ZHANG_CATALOG",
+        "/mnt/home/apricewhelan/data/Gaia/vac/Zhang2023/stellar_params_catalog_joined.h5",
+    )
 )
 
 # Columns to read from GaiaSource for the source detail page

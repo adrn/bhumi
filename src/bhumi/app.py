@@ -6,11 +6,11 @@ import logging
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from bhumi import data, science
+from bhumi import data, notebook, science
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -245,3 +245,33 @@ async def api_orbit(source_id: int) -> dict:
         "galactocentric": galcen,
         "orbit": orbit,
     }
+
+
+@app.get("/api/notebook/{source_id}")
+async def api_notebook(source_id: int) -> Response:
+    """Return a downloadable Jupyter notebook for this source."""
+    source = data.get_source(source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    enriched = science.compute_derived_quantities(source)
+
+    # Determine what spectra are available
+    has_rvs = bool(source.get("has_rvs"))
+    has_xp = bool(source.get("has_xp_continuous"))
+    has_6d = bool(enriched.get("has_6d"))
+
+    nb_json = notebook.generate_notebook(
+        source_id,
+        enriched,
+        has_rvs=has_rvs,
+        has_xp=has_xp,
+        has_6d=has_6d,
+    )
+
+    filename = f"gaia_dr3_{source_id}.ipynb"
+    return Response(
+        content=nb_json,
+        media_type="application/x-ipynb+json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
