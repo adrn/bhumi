@@ -475,4 +475,11 @@ document.addEventListener("DOMContentLoaded", () => {
   loadXP();
   loadOrbit();
   initAladin();
+
+  // Collapsible cards
+  document.querySelectorAll(".card h2").forEach((h2) => {
+    h2.addEventListener("click", () => {
+      h2.closest(".card").classList.toggle("collapsed");
+    });
+  });
 });
