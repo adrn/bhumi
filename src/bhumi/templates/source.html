@@ -13,7 +13,11 @@
   <body>
     <header>
       <a href="/" class="home-link">Bhumi</a>
+      {% if simbad and simbad.url %}
+      <a href="{{ simbad.url }}" target="_blank" rel="noopener" class="source-id-header source-id-link">Gaia DR3 {{ source_id }}</a>
+      {% else %}
       <span class="source-id-header">Gaia DR3 {{ source_id }}</span>
+      {% endif %}
       <div class="external-links">
         <a
           href="/api/notebook/{{ source_id }}"
@@ -39,8 +43,21 @@
     </header>
 
     <main>
-      {% if narrative %}
-      <p class="narrative">{{ narrative }}</p>
+      {% if narrative or simbad %}
+      <div class="narrative">
+        {% if narrative %}<p>{{ narrative }}</p>{% endif %}
+        {% if simbad %}
+        <p class="alt-names">
+          {% if simbad.error %}
+          <em>Unable to look up alternate names via SIMBAD.</em>
+          {% elif simbad.names %}
+          <strong>Also known as:</strong> {{ simbad.names | join(' · ') }}
+          {% else %}
+          <em>No other names known in SIMBAD.</em>
+          {% endif %}
+        </p>
+        {% endif %}
+      </div>
       {% endif %}
 
       <!-- Astrometry Section -->

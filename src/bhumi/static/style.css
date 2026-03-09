@@ -153,6 +153,16 @@ header {
   color: var(--text-dim);
 }
 
+a.source-id-link {
+  text-decoration: none;
+  border-bottom: 1px dotted var(--text-dim);
+}
+
+a.source-id-link:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
 /* External link buttons */
 .external-links {
   display: flex;
@@ -212,6 +222,24 @@ main {
   background: var(--card-bg);
   border-left: 3px solid var(--accent);
   border-radius: 4px;
+}
+
+.narrative p {
+  margin: 0;
+}
+
+.narrative p + p {
+  margin-top: 0.75rem;
+}
+
+.narrative .alt-names {
+  margin-top: 1rem;
+  font-size: 0.92rem;
+  color: var(--text-dim);
+}
+
+.alt-names {
+  margin-top: 0.75rem;
 }
 
 .card h2 {

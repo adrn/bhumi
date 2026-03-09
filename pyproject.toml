@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "astropy>=6.0",
     "fastapi>=0.115",
+    "astroquery>=0.4.7",
     "gala>=1.11.0",
     "h5py>=3.10",
     "ipykernel>=7.2.0",

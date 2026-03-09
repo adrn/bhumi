@@ -15,6 +15,33 @@ from bhumi import data, notebook, science
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def _get_simbad_names(source_id: int) -> dict:
+    """Query SIMBAD for alternate identifiers of a Gaia DR3 source.
+
+    Returns a dict with keys:
+        'names': list of alternate identifier strings (may be empty)
+        'error': True if the lookup failed due to an error
+        'url': SIMBAD URL for this object, or None if not found
+    """
+    gaia_name = f"Gaia DR3 {source_id}"
+    simbad_url = f"https://simbad.u-strasbg.fr/simbad/sim-id?Ident=Gaia+DR3+{source_id}"
+    try:
+        from astroquery.simbad import Simbad
+
+        result = Simbad.query_objectids(gaia_name)
+    except Exception:
+        logger.warning("SIMBAD lookup failed for %s", gaia_name, exc_info=True)
+        return {"names": [], "error": True, "url": None}
+
+    if result is None:
+        # Source not known to SIMBAD
+        return {"names": [], "error": False, "url": None}
+
+    names = [row["id"] for row in result if row["id"] != gaia_name]
+    return {"names": names, "error": False, "url": simbad_url}
+
+
 app = FastAPI(title="Bhumi — Gaia DR3 Viewer")
 
 # Paths to templates and static files (relative to this module)
@@ -101,6 +128,8 @@ async def index(
 
     narrative = science.generate_narrative(zhang, galcen, orbit_params)
 
+    simbad = _get_simbad_names(source_id_int)
+
     return templates.TemplateResponse(
         request,
         "source.html",
@@ -112,6 +141,7 @@ async def index(
             "variability": variability,
             "nss_orbit": nss_orbit,
             "narrative": narrative,
+            "simbad": simbad,
         },
     )
 
