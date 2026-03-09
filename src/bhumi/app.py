@@ -104,6 +104,11 @@ async def index(
         logger.exception("Zhang lookup failed for %d", source_id_int)
         zhang = None
     try:
+        astro_params = data.get_astro_params(source_id_int)
+    except Exception:
+        logger.exception("AstrophysicalParameters lookup failed for %d", source_id_int)
+        astro_params = None
+    try:
         variability = data.get_variability(source_id_int)
     except Exception:
         logger.exception("Variability lookup failed for %d", source_id_int)
@@ -138,6 +143,7 @@ async def index(
             "source_id": source_id_int,
             "andrae": andrae,
             "zhang": zhang,
+            "astro_params": astro_params,
             "variability": variability,
             "nss_orbit": nss_orbit,
             "narrative": narrative,

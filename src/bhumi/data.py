@@ -25,6 +25,7 @@ RVS_SPECTRUM_DIR = GAIA_DATA_ROOT / "RvsMeanSpectrum"
 XP_SPECTRUM_DIR = GAIA_DATA_ROOT / "XpSampledMeanSpectrum"
 VARI_CLASS_DIR = GAIA_DATA_ROOT / "VariClassifierResult"
 NSS_ORBIT_DIR = GAIA_DATA_ROOT / "NssTwoBodyOrbit"
+ASTRO_PARAMS_DIR = GAIA_DATA_ROOT / "AstrophysicalParameters"
 
 # Value-added catalog paths
 ANDRAE_CATALOG_PATH = Path(
@@ -158,6 +159,7 @@ _source_index: FileIndex | None = None
 _rvs_index: FileIndex | None = None
 _xp_index: FileIndex | None = None
 _vari_index: FileIndex | None = None
+_ap_index: FileIndex | None = None
 
 # Value-added catalog handles (memory-mapped, zero RAM for sorted catalogs)
 _andrae_file: h5py.File | None = None
@@ -196,6 +198,14 @@ def _get_vari_index() -> FileIndex:
     if _vari_index is None:
         _vari_index = FileIndex(VARI_CLASS_DIR, "VariClassifierResult")
     return _vari_index
+
+
+def _get_ap_index() -> FileIndex:
+    """Return the AstrophysicalParameters file index, building it on first call."""
+    global _ap_index
+    if _ap_index is None:
+        _ap_index = FileIndex(ASTRO_PARAMS_DIR, "AstrophysicalParameters")
+    return _ap_index
 
 
 def get_random_source_id() -> int | None:
@@ -732,6 +742,102 @@ def get_variability(source_id: int) -> dict[str, Any] | None:
     except Exception as e:
         logger.error(
             "Failed to read VariClassifierResult for source_id=%d: %s", source_id, e
+        )
+        return None
+
+
+# Columns to read from AstrophysicalParameters
+_AP_FLOAT_COLUMNS = [
+    # GSP-Phot
+    "teff_gspphot",
+    "teff_gspphot_lower",
+    "teff_gspphot_upper",
+    "logg_gspphot",
+    "logg_gspphot_lower",
+    "logg_gspphot_upper",
+    "mh_gspphot",
+    "mh_gspphot_lower",
+    "mh_gspphot_upper",
+    "distance_gspphot",
+    "distance_gspphot_lower",
+    "distance_gspphot_upper",
+    "azero_gspphot",
+    "azero_gspphot_lower",
+    "azero_gspphot_upper",
+    # GSP-Spec
+    "teff_gspspec",
+    "teff_gspspec_lower",
+    "teff_gspspec_upper",
+    "logg_gspspec",
+    "logg_gspspec_lower",
+    "logg_gspspec_upper",
+    "mh_gspspec",
+    "mh_gspspec_lower",
+    "mh_gspspec_upper",
+    "alphafe_gspspec",
+    "alphafe_gspspec_lower",
+    "alphafe_gspspec_upper",
+    # FLAME
+    "mass_flame",
+    "mass_flame_lower",
+    "mass_flame_upper",
+    "radius_flame",
+    "radius_flame_lower",
+    "radius_flame_upper",
+    "lum_flame",
+    "lum_flame_lower",
+    "lum_flame_upper",
+    "age_flame",
+    "age_flame_lower",
+    "age_flame_upper",
+]
+
+
+def get_astro_params(source_id: int) -> dict[str, Any] | None:
+    """Look up Gaia DR3 AstrophysicalParameters (GSP-Phot, GSP-Spec, FLAME).
+
+    Uses the same HEALPix-chunked FileIndex pattern as GaiaSource.
+
+    Args:
+        source_id: Gaia DR3 source identifier.
+
+    Returns:
+        Dictionary with available parameters, or None if not found.
+    """
+    healpix = healpix_from_source_id(source_id)
+    idx = _get_ap_index()
+    filepath = idx.find_file(healpix)
+    if filepath is None:
+        return None
+
+    try:
+        with h5py.File(filepath, "r") as f:
+            source_ids = f["source_id"][:]
+            mask = source_ids == source_id
+            if not np.any(mask):
+                return None
+
+            row = int(np.flatnonzero(mask)[0])
+            result: dict[str, Any] = {}
+            has_any = False
+
+            for col in _AP_FLOAT_COLUMNS:
+                if col in f:
+                    val = float(f[col][row])
+                    if np.isnan(val):
+                        result[col] = None
+                    else:
+                        result[col] = round(val, 4)
+                        has_any = True
+                else:
+                    result[col] = None
+
+        return result if has_any else None
+    except Exception as e:
+        logger.error(
+            "Failed to read AstrophysicalParameters for source_id=%d: %s",
+            source_id,
+            e,
         )
         return None
 

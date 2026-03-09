@@ -423,6 +423,11 @@ main {
   margin-top: 0.15em;
 }
 
+.ci {
+  color: var(--text-dim);
+  font-size: 0.85em;
+}
+
 .note {
   color: var(--text-dim);
   font-size: 0.85rem;

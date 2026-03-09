@@ -271,9 +271,118 @@
       </section>
 
       <!-- Stellar Parameters (value-added catalogs) -->
-      {% if andrae or zhang %}
+      {% if andrae or zhang or astro_params %}
       <section class="card" id="section-stellar-params">
         <h2>Stellar Parameters</h2>
+
+        {% if astro_params %}
+        <h3>Gaia DR3 Pipeline</h3>
+        <div class="two-col-grid">
+          <table class="data-table">
+            <tbody>
+              {% if astro_params.teff_gspphot is not none %}
+              <tr>
+                <td class="label">T<sub>eff</sub> (GSP-Phot)</td>
+                <td>{{ "%.0f"|format(astro_params.teff_gspphot) }}
+                  <span class="ci">{% if astro_params.teff_gspphot_lower is not none and astro_params.teff_gspphot_upper is not none %}({{ "%.0f"|format(astro_params.teff_gspphot_lower) }}, {{ "%.0f"|format(astro_params.teff_gspphot_upper) }}){% endif %}</span> K</td>
+              </tr>
+              {% endif %}
+              {% if astro_params.logg_gspphot is not none %}
+              <tr>
+                <td class="label">log g (GSP-Phot)</td>
+                <td>{{ "%.3f"|format(astro_params.logg_gspphot) }}
+                  <span class="ci">{% if astro_params.logg_gspphot_lower is not none and astro_params.logg_gspphot_upper is not none %}({{ "%.3f"|format(astro_params.logg_gspphot_lower) }}, {{ "%.3f"|format(astro_params.logg_gspphot_upper) }}){% endif %}</span> dex</td>
+              </tr>
+              {% endif %}
+              {% if astro_params.mh_gspphot is not none %}
+              <tr>
+                <td class="label">[M/H] (GSP-Phot)</td>
+                <td>{{ "%.3f"|format(astro_params.mh_gspphot) }}
+                  <span class="ci">{% if astro_params.mh_gspphot_lower is not none and astro_params.mh_gspphot_upper is not none %}({{ "%.3f"|format(astro_params.mh_gspphot_lower) }}, {{ "%.3f"|format(astro_params.mh_gspphot_upper) }}){% endif %}</span> dex</td>
+              </tr>
+              {% endif %}
+              {% if astro_params.distance_gspphot is not none %}
+              <tr>
+                <td class="label">Distance (GSP-Phot)</td>
+                <td>{{ "%.1f"|format(astro_params.distance_gspphot) }}
+                  <span class="ci">{% if astro_params.distance_gspphot_lower is not none and astro_params.distance_gspphot_upper is not none %}({{ "%.1f"|format(astro_params.distance_gspphot_lower) }}, {{ "%.1f"|format(astro_params.distance_gspphot_upper) }}){% endif %}</span> pc</td>
+              </tr>
+              {% endif %}
+              {% if astro_params.azero_gspphot is not none %}
+              <tr>
+                <td class="label">A<sub>0</sub> (GSP-Phot)</td>
+                <td>{{ "%.3f"|format(astro_params.azero_gspphot) }}
+                  <span class="ci">{% if astro_params.azero_gspphot_lower is not none and astro_params.azero_gspphot_upper is not none %}({{ "%.3f"|format(astro_params.azero_gspphot_lower) }}, {{ "%.3f"|format(astro_params.azero_gspphot_upper) }}){% endif %}</span> mag</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+          <table class="data-table">
+            <tbody>
+              {% if astro_params.teff_gspspec is not none %}
+              <tr>
+                <td class="label">T<sub>eff</sub> (GSP-Spec)</td>
+                <td>{{ "%.0f"|format(astro_params.teff_gspspec) }}
+                  <span class="ci">{% if astro_params.teff_gspspec_lower is not none and astro_params.teff_gspspec_upper is not none %}({{ "%.0f"|format(astro_params.teff_gspspec_lower) }}, {{ "%.0f"|format(astro_params.teff_gspspec_upper) }}){% endif %}</span> K</td>
+              </tr>
+              {% endif %}
+              {% if astro_params.logg_gspspec is not none %}
+              <tr>
+                <td class="label">log g (GSP-Spec)</td>
+                <td>{{ "%.3f"|format(astro_params.logg_gspspec) }}
+                  <span class="ci">{% if astro_params.logg_gspspec_lower is not none and astro_params.logg_gspspec_upper is not none %}({{ "%.3f"|format(astro_params.logg_gspspec_lower) }}, {{ "%.3f"|format(astro_params.logg_gspspec_upper) }}){% endif %}</span> dex</td>
+              </tr>
+              {% endif %}
+              {% if astro_params.mh_gspspec is not none %}
+              <tr>
+                <td class="label">[M/H] (GSP-Spec)</td>
+                <td>{{ "%.3f"|format(astro_params.mh_gspspec) }}
+                  <span class="ci">{% if astro_params.mh_gspspec_lower is not none and astro_params.mh_gspspec_upper is not none %}({{ "%.3f"|format(astro_params.mh_gspspec_lower) }}, {{ "%.3f"|format(astro_params.mh_gspspec_upper) }}){% endif %}</span> dex</td>
+              </tr>
+              {% endif %}
+              {% if astro_params.alphafe_gspspec is not none %}
+              <tr>
+                <td class="label">[α/Fe] (GSP-Spec)</td>
+                <td>{{ "%.3f"|format(astro_params.alphafe_gspspec) }}
+                  <span class="ci">{% if astro_params.alphafe_gspspec_lower is not none and astro_params.alphafe_gspspec_upper is not none %}({{ "%.3f"|format(astro_params.alphafe_gspspec_lower) }}, {{ "%.3f"|format(astro_params.alphafe_gspspec_upper) }}){% endif %}</span> dex</td>
+              </tr>
+              {% endif %}
+              {% if astro_params.mass_flame is not none %}
+              <tr>
+                <td class="label">Mass (FLAME)</td>
+                <td>{{ "%.2f"|format(astro_params.mass_flame) }}
+                  <span class="ci">{% if astro_params.mass_flame_lower is not none and astro_params.mass_flame_upper is not none %}({{ "%.2f"|format(astro_params.mass_flame_lower) }}, {{ "%.2f"|format(astro_params.mass_flame_upper) }}){% endif %}</span> M<sub>☉</sub></td>
+              </tr>
+              {% endif %}
+              {% if astro_params.radius_flame is not none %}
+              <tr>
+                <td class="label">Radius (FLAME)</td>
+                <td>{{ "%.2f"|format(astro_params.radius_flame) }}
+                  <span class="ci">{% if astro_params.radius_flame_lower is not none and astro_params.radius_flame_upper is not none %}({{ "%.2f"|format(astro_params.radius_flame_lower) }}, {{ "%.2f"|format(astro_params.radius_flame_upper) }}){% endif %}</span> R<sub>☉</sub></td>
+              </tr>
+              {% endif %}
+              {% if astro_params.lum_flame is not none %}
+              <tr>
+                <td class="label">Luminosity (FLAME)</td>
+                <td>{{ "%.3f"|format(astro_params.lum_flame) }}
+                  <span class="ci">{% if astro_params.lum_flame_lower is not none and astro_params.lum_flame_upper is not none %}({{ "%.3f"|format(astro_params.lum_flame_lower) }}, {{ "%.3f"|format(astro_params.lum_flame_upper) }}){% endif %}</span> L<sub>☉</sub></td>
+              </tr>
+              {% endif %}
+              {% if astro_params.age_flame is not none %}
+              <tr>
+                <td class="label">Age (FLAME)</td>
+                <td>{{ "%.2f"|format(astro_params.age_flame / 1000) }}
+                  <span class="ci">{% if astro_params.age_flame_lower is not none and astro_params.age_flame_upper is not none %}({{ "%.2f"|format(astro_params.age_flame_lower / 1000) }}, {{ "%.2f"|format(astro_params.age_flame_upper / 1000) }}){% endif %}</span> Gyr</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Confidence intervals shown in parentheses are 16th–84th percentile.</p>
+        {% endif %}
+
+        {% if andrae or zhang %}
+        <h3>Value-Added Catalogs</h3>
         <table class="data-table stellar-params-table">
           <thead>
             <tr>
@@ -355,6 +464,7 @@
             {% endif %}
           </tbody>
         </table>
+        {% endif %}
       </section>
       {% endif %}
 
