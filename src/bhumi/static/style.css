@@ -29,6 +29,14 @@ body {
   min-height: 100vh;
 }
 
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  color: var(--accent-bright);
+}
+
 /* Landing page */
 .landing {
   display: flex;
@@ -232,16 +240,17 @@ main {
   margin-top: 0.75rem;
 }
 
-.narrative .alt-names {
+.narrative {
   margin-top: 1.5rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--border);
   font-size: 0.92rem;
-  color: var(--text-dim);
 }
 
 .alt-names {
-  margin-top: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  font-size: 0.92rem;
 }
 
 .card h2 {
@@ -315,9 +324,10 @@ main {
 }
 
 .snr {
+  display: block;
   color: var(--text-dim);
-  font-size: 0.8rem;
-  margin-left: 0.5em;
+  font-size: 0.75rem;
+  margin-top: 0.15em;
 }
 
 .note {

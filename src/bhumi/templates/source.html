@@ -87,8 +87,8 @@
                   is not none %} ± {{ "%.4f"|format(source.parallax_error) }} {%
                   endif %} mas {% if source.parallax_over_error is not none %}
                   <span class="snr"
-                    >(S/N = {{ "%.1f"|format(source.parallax_over_error)
-                    }})</span
+                    >S/N = {{ "%.1f"|format(source.parallax_over_error)
+                    }}</span
                   >
                   {% endif %} {% else %} — {% endif %}
                 </td>
@@ -121,7 +121,7 @@
                   "%.4f"|format(source.pmra_error) }} {% endif %} mas/yr {% if
                   source.pmra_snr is not none %}
                   <span class="snr"
-                    >(S/N = {{ "%.1f"|format(source.pmra_snr) }})</span
+                    >S/N = {{ "%.1f"|format(source.pmra_snr) }}</span
                   >
                   {% endif %} {% else %} — {% endif %}
                 </td>
@@ -134,7 +134,7 @@
                   none %} ± {{ "%.4f"|format(source.pmdec_error) }} {% endif %}
                   mas/yr {% if source.pmdec_snr is not none %}
                   <span class="snr"
-                    >(S/N = {{ "%.1f"|format(source.pmdec_snr) }})</span
+                    >S/N = {{ "%.1f"|format(source.pmdec_snr) }}</span
                   >
                   {% endif %} {% else %} — {% endif %}
                 </td>
@@ -158,7 +158,7 @@
                   "%.2f"|format(source.radial_velocity_error) }} {% endif %}
                   km/s {% if source.rv_snr is not none %}
                   <span class="snr"
-                    >(S/N = {{ "%.1f"|format(source.rv_snr) }})</span
+                    >S/N = {{ "%.1f"|format(source.rv_snr) }}</span
                   >
                   {% endif %} {% else %} — {% endif %}
                 </td>
