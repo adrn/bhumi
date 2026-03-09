@@ -290,13 +290,15 @@ def _classify_stellar_type(teff: float | None, logg: float | None) -> str | None
         spec = "FG-type"
     elif teff >= 3800:
         spec = "GK-type"
-    else:
+    elif teff >= 2400:
         spec = "M-type"
+    else:
+        spec = "unknown-type"
 
     # Luminosity class from log g
-    if logg < 3.5:
+    if logg < 3.0:
         # Check red clump first (narrow box)
-        if 4300 <= teff <= 5200 and 2.0 <= logg <= 2.8:
+        if 4300 <= teff <= 5200 and 2.2 <= logg <= 2.8:
             return "red clump giant"
         return f"{spec} giant"
     if logg < 4.0:
@@ -319,11 +321,11 @@ def _classify_orbit(
     vphi = -vphi
 
     # Eccentricity descriptor
-    if ecc < 0.15:
+    if ecc < 0.1:
         parts.append("nearly circular")
     elif ecc < 0.3:
         parts.append("mildly eccentric")
-    elif ecc < 0.55:
+    elif ecc < 0.6:
         parts.append("eccentric")
     else:
         parts.append("highly eccentric")
@@ -343,6 +345,21 @@ def _classify_orbit(
     return ", ".join(parts)
 
 
+def _describe_metallicity(feh: float | None) -> str | None:
+    """Return a short metallicity descriptor from [Fe/H]."""
+    if feh is None:
+        return None
+    if feh < -2.0:
+        return "very metal-poor"
+    if feh < -1.0:
+        return "metal-poor"
+    if feh < -0.5:
+        return "moderately metal-poor"
+    if feh < 0.2:
+        return "near-solar metallicity"
+    return "metal-rich"
+
+
 def generate_narrative(
     zhang: dict[str, Any] | None,
     galcen: dict[str, Any] | None,
@@ -359,10 +376,12 @@ def generate_narrative(
         A narrative string, or None if insufficient data.
     """
     stellar = None
+    metallicity = None
     if zhang is not None:
         stellar = _classify_stellar_type(
             zhang.get("zhang_teff"), zhang.get("zhang_logg")
         )
+        metallicity = _describe_metallicity(zhang.get("zhang_feh"))
 
     vphi = None
     if galcen is not None:
@@ -376,10 +395,20 @@ def generate_narrative(
 
     orbit_desc = _classify_orbit(vphi, ecc, zmax)
 
-    if stellar and orbit_desc:
-        return f"This may be a {stellar} on a {orbit_desc}."
-    if stellar:
-        return f"This may be a {stellar}."
+    # Build the stellar descriptor, optionally with metallicity
+    if stellar and metallicity:
+        star_desc = f"{metallicity} {stellar}"
+    elif stellar:
+        star_desc = stellar
+    elif metallicity:
+        star_desc = f"{metallicity} star"
+    else:
+        star_desc = None
+
+    if star_desc and orbit_desc:
+        return f"This may be a {star_desc} on a {orbit_desc}."
+    if star_desc:
+        return f"This may be a {star_desc}."
     if orbit_desc:
         return f"This star may be on a {orbit_desc}."
     return None
