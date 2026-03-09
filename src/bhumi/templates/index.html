@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bhumi — Gaia DR3 Viewer</title>
+    <title>Bhumi — Gaia Source Inspector</title>
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
     <div class="landing">
       <h1>Bhumi</h1>
-      <p class="subtitle">Gaia DR3 Source Viewer</p>
+      <p class="subtitle">Gaia Source Inspector</p>
 
       <form action="/" method="get" class="search-form">
         <input
@@ -20,13 +20,13 @@
           required
           class="search-input"
         />
-        <button type="submit" class="search-btn">Look up</button>
+        <button type="submit" class="search-btn">Search</button>
       </form>
 
       <div class="random-buttons">
-        <button class="random-btn" onclick="loadRandom(this, '/api/random')">Random star ✦</button>
-        <button class="random-btn" onclick="loadRandom(this, '/api/random/spectra')">Random star with spectra</button>
-        <button class="random-btn" onclick="loadRandom(this, '/api/random/orbit')">Random star with orbit</button>
+        <button class="random-btn" onclick="loadRandom(this, '/api/random')">Random star 🎲</button>
+        <button class="random-btn" onclick="loadRandom(this, '/api/random/spectra')">Random star with spectra </button>
+        <!-- <button class="random-btn" onclick="loadRandom(this, '/api/random/orbit')">Random star with orbit</button> -->
       </div>
 
       {% if error %}
@@ -51,5 +51,10 @@
         }
       }
     </script>
+
+    <footer>
+      <p>Made by <a href="https://github.com/adrn" target="_blank" rel="noopener">@adrn</a> · Hosted at the <a href="https://flatironinstitute.org/" target="_blank" rel="noopener">Flatiron Institute</a> · <a href="https://www.cosmos.esa.int/web/gaia/" target="_blank" rel="noopener">Data from ESA/Gaia/DPAC</a></p>
+      <p>Problems or ideas? <a href="https://github.com/adrn/bhumi/issues" target="_blank" rel="noopener">Open an issue</a></p>
+    </footer>
   </body>
 </html>
