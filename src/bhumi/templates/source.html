@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bhumi — Gaia DR3 {{ source_id }}</title>
     <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.css" />
     <script
       src="https://cdn.plot.ly/plotly-2.35.2.min.js"
       charset="utf-8"
@@ -59,6 +60,12 @@
         {% endif %}
       </div>
       {% endif %}
+
+      <!-- Sky Viewer -->
+      <section class="card">
+        <h2>Sky Viewer</h2>
+        <div id="aladin-lite-div"></div>
+      </section>
 
       <!-- Astrometry Section -->
       <section class="card">
@@ -452,6 +459,8 @@
     <script>
       const SOURCE_ID = "{{ source_id }}";
       const HAS_6D = {{ source.has_6d | tojson }};
+      const SOURCE_RA = {{ source.ra }};
+      const SOURCE_DEC = {{ source.dec }};
     </script>
     <script src="/static/app.js"></script>
   </body>

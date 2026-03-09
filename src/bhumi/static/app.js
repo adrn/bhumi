@@ -409,6 +409,63 @@ async function loadOrbit() {
 }
 
 // ---------------------------------------------------------------------------
+// Aladin Lite Sky Viewer
+// ---------------------------------------------------------------------------
+
+function initAladin() {
+  const container = document.getElementById("aladin-lite-div");
+  if (!container) return;
+
+  // Load jQuery + Aladin Lite async, then initialize
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  loadScript("https://code.jquery.com/jquery-3.7.1.min.js")
+    .then(() => loadScript("https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.js"))
+    .then(() => {
+      const aladin = A.aladin("#aladin-lite-div", {
+        target: `${SOURCE_RA} ${SOURCE_DEC}`,
+        fov: 0.05,
+        survey: "P/2MASS/color",
+        showReticle: false,
+      });
+
+      // Mark the current source
+      var marker = A.catalog({ name: "This source", sourceSize: 18, color: "#ffd866" });
+      aladin.addCatalog(marker);
+      marker.addSources([A.marker(SOURCE_RA, SOURCE_DEC, { popupTitle: `Gaia DR3 ${SOURCE_ID}` })]);
+
+      // Overlay Gaia DR3 sources from VizieR
+      var gaiaCat = A.catalogFromVizieR("I/355/gaiadr3", `${SOURCE_RA} ${SOURCE_DEC}`, 0.05, {
+        onClick: "showPopup",
+        color: "#6ea8fe",
+        sourceSize: 10,
+        name: "Gaia DR3",
+      });
+      aladin.addCatalog(gaiaCat);
+
+      // Click on a Gaia source → navigate to its Bhumi page
+      aladin.on("objectClicked", function (object) {
+        if (!object || !object.data) return;
+        var sid = object.data.Source || object.data.source_id;
+        if (sid && String(sid) !== SOURCE_ID) {
+          window.open(`/?source_id=${sid}`, "_blank");
+        }
+      });
+    })
+    .catch(() => {
+      container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 2rem;">Sky viewer unavailable.</p>';
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Initialize on page load
 // ---------------------------------------------------------------------------
 
@@ -417,4 +474,5 @@ document.addEventListener("DOMContentLoaded", () => {
   loadRVS();
   loadXP();
   loadOrbit();
+  initAladin();
 });
