@@ -1,8 +1,8 @@
 # Bhumi
 
-A web viewer for [Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) data,
-designed to run on a machine with local access to the full Gaia DR3 data stored
-as HDF5 files.
+A web viewer for Gaia (currently [DR3](https://www.cosmos.esa.int/web/gaia/dr3)) data,
+designed to run on a machine with local access to the full Gaia data from a given
+release stored as HDF5 files.
 
 Enter any Gaia DR3 `source_id` and get a summary page of the Gaia data, with
 additional derived quantities and an orbital analysis if full 6D phase-space
@@ -14,7 +14,7 @@ Every source page has a shareable URL (`?source_id=...`).
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/) for package management
-- Local access to Gaia DR3 HDF5 files
+- Local access to Gaia (DR3) HDF5 files
 
 ## Installation
 
