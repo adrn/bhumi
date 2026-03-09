@@ -272,6 +272,207 @@ async function loadXP() {
 }
 
 // ---------------------------------------------------------------------------
+// Galactic Kinematics
+// ---------------------------------------------------------------------------
+
+// Cache density data so it's fetched only once across page loads
+let _toomreDensity = null;
+let _sausageDensity = null;
+
+async function fetchDensity(url) {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
+
+function makeDensityHeatmap(density) {
+  if (!density) return null;
+  return {
+    x: density.x,
+    y: density.y,
+    z: density.z,
+    type: "heatmap",
+    colorscale: [
+      [0.0, "rgba(10,10,30,0)"],
+      [0.2, "rgba(30,50,90,0.5)"],
+      [0.4, "rgba(50,100,140,0.6)"],
+      [0.6, "rgba(80,160,180,0.7)"],
+      [0.8, "rgba(150,210,200,0.8)"],
+      [1.0, "rgba(240,250,240,0.9)"],
+    ],
+    showscale: false,
+    hoverinfo: "skip",
+    zsmooth: "best",
+    connectgaps: false,
+  };
+}
+
+async function loadKinematics() {
+  if (!HAS_6D) return;
+
+  const loadingEl = document.getElementById("kinematics-loading");
+  const contentEl = document.getElementById("kinematics-content");
+
+  // Fetch kinematics + density data in parallel
+  const [gc, toomreDen, sausageDen] = await Promise.all([
+    apiFetch(`/api/kinematics/${SOURCE_ID}`),
+    _toomreDensity || fetchDensity("/static/toomre_density.json"),
+    _sausageDensity || fetchDensity("/static/sausage_density.json"),
+  ]);
+  _toomreDensity = toomreDen;
+  _sausageDensity = sausageDen;
+
+  if (!gc) {
+    loadingEl.textContent = "Kinematics data not available.";
+    return;
+  }
+
+  loadingEl.style.display = "none";
+  contentEl.style.display = "block";
+
+  // Velocity tables
+  const c = gc.cartesian;
+  document.getElementById("vel-cartesian").innerHTML = buildTableHTML([
+    ["(x, y, z)", `(${c.x_kpc}, ${c.y_kpc}, ${c.z_kpc}) kpc`],
+    ["(v<sub>x</sub>, v<sub>y</sub>, v<sub>z</sub>)", `(${c.v_x_km_s}, ${c.v_y_km_s}, ${c.v_z_km_s}) km/s`],
+  ]);
+
+  document.getElementById("vel-cylindrical").innerHTML = buildTableHTML([
+    ["R", `${gc.cylindrical.R_kpc} kpc`],
+    ["\u03C6", `${gc.cylindrical.phi_deg}\u00B0`],
+    ["z", `${gc.cylindrical.z_kpc} kpc`],
+    ["v<sub>R</sub>", `${gc.cylindrical.v_R_km_s} km/s`],
+    ["v<sub>\u03C6</sub>", `${gc.cylindrical.v_phi_km_s} km/s`],
+    ["v<sub>z</sub>", `${gc.cylindrical.v_z_km_s} km/s`],
+  ]);
+
+  // Toomre diagram: -v_phi vs sqrt(v_R^2 + v_z^2)
+  const vR = gc.cylindrical.v_R_km_s;
+  const vPhi = gc.cylindrical.v_phi_km_s;
+  const negVPhi = -vPhi;
+  const vZ = gc.cylindrical.v_z_km_s;
+  const vPerp = Math.sqrt(vR * vR + vZ * vZ);
+
+  // Reference circles of constant |v - v_LSR|
+  // In this frame, -v_phi for prograde disk stars is ~232 km/s
+  const negVPhiLSR = 232;
+  const circleAngles = [];
+  for (let a = 0; a <= 360; a += 2) circleAngles.push((a * Math.PI) / 180);
+  const refCircles = [50, 100, 150].map((radius) => ({
+    x: circleAngles.map((a) => negVPhiLSR + radius * Math.cos(a)),
+    y: circleAngles.map((a) => Math.abs(radius * Math.sin(a))),
+    mode: "lines",
+    type: "scatter",
+    line: { color: "#a3d9b9", width: 1, dash: "dot" },
+    hoverinfo: "skip",
+    showlegend: false,
+  }));
+
+  const toomreStar = {
+    x: [negVPhi],
+    y: [vPerp],
+    mode: "markers",
+    type: "scatter",
+    marker: {
+      color: PLOTLY_HIGHLIGHT,
+      size: 10,
+      symbol: "star",
+      line: { color: "#fff", width: 1 },
+    },
+    name: "This source",
+    showlegend: false,
+  };
+
+  const toomreTraces = [];
+  const toomreHeatmap = makeDensityHeatmap(toomreDen);
+  if (toomreHeatmap) toomreTraces.push(toomreHeatmap);
+  toomreTraces.push(...refCircles, toomreStar);
+
+  Plotly.newPlot(
+    "toomre-plot",
+    toomreTraces,
+    baseLayout(
+      "Toomre Diagram",
+      "\u2212v<sub>\u03C6</sub> (km/s)",
+      "\u221A(v<sub>R</sub>\u00B2 + v<sub>z</sub>\u00B2) (km/s)",
+      {
+        xaxis: {
+          title: "\u2212v<sub>\u03C6</sub> (km/s)",
+          range: [-150, 450],
+          gridcolor: PLOTLY_GRID,
+          zerolinecolor: PLOTLY_DIM,
+          color: PLOTLY_DIM,
+        },
+        yaxis: {
+          title: "\u221A(v<sub>R</sub>\u00B2 + v<sub>z</sub>\u00B2) (km/s)",
+          range: [0, 400],
+          gridcolor: PLOTLY_GRID,
+          zerolinecolor: PLOTLY_DIM,
+          color: PLOTLY_DIM,
+        },
+        height: 400,
+      },
+    ),
+    { responsive: true },
+  );
+
+  // Sausage diagram: v_r (spherical) vs -v_phi
+  const vRsph = gc.spherical.v_r_km_s;
+
+  const sausageStar = {
+    x: [vRsph],
+    y: [negVPhi],
+    mode: "markers",
+    type: "scatter",
+    marker: {
+      color: PLOTLY_HIGHLIGHT,
+      size: 10,
+      symbol: "star",
+      line: { color: "#fff", width: 1 },
+    },
+    name: "This source",
+    showlegend: false,
+  };
+
+  const sausageTraces = [];
+  const sausageHeatmap = makeDensityHeatmap(sausageDen);
+  if (sausageHeatmap) sausageTraces.push(sausageHeatmap);
+  sausageTraces.push(sausageStar);
+
+  Plotly.newPlot(
+    "sausage-plot",
+    sausageTraces,
+    baseLayout(
+      "v<sub>r</sub>\u2013v<sub>\u03C6</sub> Diagram",
+      "v<sub>r</sub> (spherical, km/s)",
+      "\u2212v<sub>\u03C6</sub> (km/s)",
+      {
+        xaxis: {
+          title: "v<sub>r</sub> (spherical, km/s)",
+          range: [-400, 400],
+          gridcolor: PLOTLY_GRID,
+          zerolinecolor: PLOTLY_DIM,
+          color: PLOTLY_DIM,
+        },
+        yaxis: {
+          title: "\u2212v<sub>\u03C6</sub> (km/s)",
+          range: [-400, 400],
+          gridcolor: PLOTLY_GRID,
+          zerolinecolor: PLOTLY_DIM,
+          color: PLOTLY_DIM,
+        },
+        height: 400,
+      },
+    ),
+    { responsive: true },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Orbit
 // ---------------------------------------------------------------------------
 
@@ -280,7 +481,7 @@ async function loadOrbit() {
 
   const loadingEl = document.getElementById("orbit-loading");
   const plotsEl = document.getElementById("orbit-plots");
-  const galcenEl = document.getElementById("galcen-section");
+  const paramsEl = document.getElementById("orbit-params-section");
 
   let data;
   try {
@@ -304,7 +505,7 @@ async function loadOrbit() {
 
   loadingEl.style.display = "none";
   plotsEl.style.display = "grid";
-  galcenEl.style.display = "block";
+  paramsEl.style.display = "block";
 
   const proj = data.orbit.projections;
   const orbitTrace = (x, y) => ({
@@ -337,7 +538,7 @@ async function loadOrbit() {
   Plotly.newPlot(
     "orbit-xy",
     [orbitTrace(proj.x, proj.y), startMarker(proj.x[0], proj.y[0])],
-    baseLayout("x–y", "x (kpc)", "y (kpc)", {
+    baseLayout("x\u2013y", "x (kpc)", "y (kpc)", {
       yaxis: {
         scaleanchor: "x",
         gridcolor: PLOTLY_GRID,
@@ -353,7 +554,7 @@ async function loadOrbit() {
   Plotly.newPlot(
     "orbit-xz",
     [orbitTrace(proj.x, proj.z), startMarker(proj.x[0], proj.z[0])],
-    baseLayout("x–z", "x (kpc)", "z (kpc)", {
+    baseLayout("x\u2013z", "x (kpc)", "z (kpc)", {
       yaxis: {
         scaleanchor: "x",
         gridcolor: PLOTLY_GRID,
@@ -369,7 +570,7 @@ async function loadOrbit() {
   Plotly.newPlot(
     "orbit-Rz",
     [orbitTrace(proj.R, proj.z), startMarker(proj.R[0], proj.z[0])],
-    baseLayout("R–z", "R (kpc)", "z (kpc)", {
+    baseLayout("R\u2013z", "R (kpc)", "z (kpc)", {
       yaxis: {
         scaleanchor: "x",
         gridcolor: PLOTLY_GRID,
@@ -380,23 +581,6 @@ async function loadOrbit() {
     }),
     { responsive: true },
   );
-
-  // Galactocentric velocities
-  const gc = data.galactocentric;
-  const c = gc.cartesian;
-  document.getElementById("vel-cartesian").innerHTML = buildTableHTML([
-    ["(x, y, z)", `(${c.x_kpc}, ${c.y_kpc}, ${c.z_kpc}) kpc`],
-    ["(v<sub>x</sub>, v<sub>y</sub>, v<sub>z</sub>)", `(${c.v_x_km_s}, ${c.v_y_km_s}, ${c.v_z_km_s}) km/s`],
-  ]);
-
-  document.getElementById("vel-cylindrical").innerHTML = buildTableHTML([
-    ["R", `${gc.cylindrical.R_kpc} kpc`],
-    ["φ", `${gc.cylindrical.phi_deg}°`],
-    ["z", `${gc.cylindrical.z_kpc} kpc`],
-    ["v<sub>R</sub>", `${gc.cylindrical.v_R_km_s} km/s`],
-    ["v<sub>φ</sub>", `${gc.cylindrical.v_phi_km_s} km/s`],
-    ["v<sub>z</sub>", `${gc.cylindrical.v_z_km_s} km/s`],
-  ]);
 
   // Orbital parameters
   const op = data.orbit.params;
@@ -473,6 +657,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadCMD();
   loadRVS();
   loadXP();
+  loadKinematics();
   loadOrbit();
   initAladin();
 

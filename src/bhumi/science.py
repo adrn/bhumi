@@ -194,6 +194,10 @@ def compute_galactocentric(source: dict[str, Any]) -> dict[str, Any] | None:
     )
     v_z_cyl = cyl.v_z.to(u.km / u.s).value
 
+    # Spherical radial velocity: v_r = (r_vec . v_vec) / |r_vec|
+    r_sph = float(np.sqrt(x**2 + y**2 + z**2))
+    v_r_sph = float((x * v_x + y * v_y + z * v_z) / r_sph) if r_sph > 0 else 0.0
+
     return {
         "cartesian": {
             "x_kpc": round(float(x), 4),
@@ -210,6 +214,10 @@ def compute_galactocentric(source: dict[str, Any]) -> dict[str, Any] | None:
             "v_R_km_s": round(float(v_R), 2),
             "v_phi_km_s": round(float(v_phi), 2),
             "v_z_km_s": round(float(v_z_cyl), 2),
+        },
+        "spherical": {
+            "r_kpc": round(float(r_sph), 4),
+            "v_r_km_s": round(float(v_r_sph), 2),
         },
     }
 

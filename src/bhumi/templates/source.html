@@ -539,6 +539,34 @@
         {% endif %}
       </section>
 
+      <!-- Galactic Kinematics (only if 6D) -->
+      {% if source.has_6d %}
+      <section class="card" id="section-kinematics">
+        <h2>Galactic Kinematics</h2>
+
+        <div id="kinematics-loading" class="loading">Computing kinematics...</div>
+
+        <div id="kinematics-content" style="display: none">
+          <div class="velocity-tables">
+            <div>
+              <h4>Cartesian</h4>
+              <table class="data-table" id="vel-cartesian"></table>
+            </div>
+            <div>
+              <h4>Cylindrical</h4>
+              <table class="data-table" id="vel-cylindrical"></table>
+            </div>
+          </div>
+
+          <h3>Velocity Diagrams</h3>
+          <div class="two-col-grid">
+            <div id="toomre-plot" class="plot-container"></div>
+            <div id="sausage-plot" class="plot-container"></div>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
       <!-- Orbit Section (only if 6D) -->
       {% if source.has_6d %}
       <section class="card" id="section-orbit">
@@ -553,19 +581,7 @@
           <div id="orbit-Rz" class="plot-container"></div>
         </div>
 
-        <div id="galcen-section" style="display: none">
-          <h3>Galactocentric Velocities</h3>
-          <div class="velocity-tables">
-            <div>
-              <h4>Cartesian</h4>
-              <table class="data-table" id="vel-cartesian"></table>
-            </div>
-            <div>
-              <h4>Cylindrical</h4>
-              <table class="data-table" id="vel-cylindrical"></table>
-            </div>
-          </div>
-
+        <div id="orbit-params-section" style="display: none">
           <h3>Orbital Parameters</h3>
           <table class="data-table" id="orbit-params"></table>
         </div>

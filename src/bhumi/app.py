@@ -237,6 +237,20 @@ async def api_xp(source_id: int) -> dict:
     return result
 
 
+@app.get("/api/kinematics/{source_id}")
+async def api_kinematics(source_id: int) -> dict:
+    """Return Galactocentric position and velocity (no orbit integration)."""
+    source = data.get_source(source_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    enriched = science.compute_derived_quantities(source)
+    galcen = science.compute_galactocentric(enriched)
+    if galcen is None:
+        raise HTTPException(status_code=404, detail="No 6D phase-space info")
+    return galcen
+
+
 @app.get("/api/orbit/{source_id}")
 async def api_orbit(source_id: int) -> dict:
     """Return orbit projections and orbital parameters."""
