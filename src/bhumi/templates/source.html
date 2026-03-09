@@ -19,6 +19,10 @@
       {% else %}
       <span class="source-id-header">Gaia DR3 {{ source_id }}</span>
       {% endif %}
+      <div class="nav-menu-wrapper">
+        <button class="nav-menu-btn" id="nav-menu-btn" aria-label="Jump to section">&#x22EE;</button>
+        <div class="nav-menu" id="nav-menu"></div>
+      </div>
       <div class="external-links">
         <a
           href="/api/notebook/{{ source_id }}"
@@ -62,13 +66,13 @@
       {% endif %}
 
       <!-- Sky Viewer -->
-      <section class="card">
+      <section class="card" id="section-sky-viewer">
         <h2>Sky Viewer</h2>
         <div id="aladin-lite-div"></div>
       </section>
 
       <!-- Astrometry Section -->
-      <section class="card">
+      <section class="card" id="section-astrometry">
         <h2>Astrometry</h2>
         <div class="two-col-grid">
           <table class="data-table">
@@ -76,14 +80,13 @@
               <tr>
                 <td class="label">RA, Dec (ICRS)</td>
                 <td>
-                  {{ "%.6f"|format(source.ra) }}°, {{ "%.6f"|format(source.dec)
-                  }}°
+                  ({{ "%.6f"|format(source.ra) }}, {{ "%.6f"|format(source.dec) }}) deg
                 </td>
               </tr>
               <tr>
                 <td class="label">l, b (Galactic)</td>
                 <td>
-                  {{ "%.6f"|format(source.l) }}°, {{ "%.6f"|format(source.b) }}°
+                  ({{ "%.6f"|format(source.l) }}, {{ "%.6f"|format(source.b) }}) deg
                 </td>
               </tr>
               <tr>
@@ -103,17 +106,25 @@
               <tr>
                 <td class="label">Distance</td>
                 <td>
-                  {% if source.distance_kpc is not none %} {{
-                  "%.4f"|format(source.distance_kpc) }} kpc {% else %} — {%
-                  endif %}
+                  {% if source.distance_kpc is not none %}
+                    {{ "%.4f"|format(source.distance_kpc) }}
+                    {% if source.distance_kpc_err is not none %}
+                      ± {{ "%.4f"|format(source.distance_kpc_err) }}
+                    {% endif %}
+                    kpc
+                  {% else %} — {% endif %}
                 </td>
               </tr>
               <tr>
                 <td class="label">Distance modulus</td>
                 <td>
-                  {% if source.distance_modulus is not none %} {{
-                  "%.3f"|format(source.distance_modulus) }} mag {% else %} — {%
-                  endif %}
+                  {% if source.distance_modulus is not none %}
+                    {{ "%.3f"|format(source.distance_modulus) }}
+                    {% if source.distance_modulus_err is not none %}
+                      ± {{ "%.3f"|format(source.distance_modulus_err) }}
+                    {% endif %}
+                    mag
+                  {% else %} — {% endif %}
                 </td>
               </tr>
             </tbody>
@@ -182,7 +193,7 @@
       </section>
 
       <!-- Photometry Section -->
-      <section class="card">
+      <section class="card" id="section-photometry">
         <h2>Photometry</h2>
         <div class="two-col-grid">
           <table class="data-table">
@@ -261,7 +272,7 @@
 
       <!-- Stellar Parameters (value-added catalogs) -->
       {% if andrae or zhang %}
-      <section class="card">
+      <section class="card" id="section-stellar-params">
         <h2>Stellar Parameters</h2>
         <table class="data-table stellar-params-table">
           <thead>
@@ -348,7 +359,7 @@
       {% endif %}
 
       <!-- Variability & Multiplicity -->
-      <section class="card">
+      <section class="card" id="section-variability">
         <h2>Variability &amp; Multiplicity</h2>
 
         {% if variability %}
@@ -420,7 +431,7 @@
 
       <!-- Orbit Section (only if 6D) -->
       {% if source.has_6d %}
-      <section class="card">
+      <section class="card" id="section-orbit">
         <h2>Galactic Orbit</h2>
         <p class="note">Integrated 8 Gyr backward in <a href="https://gala.adrian.pw">Gala's MilkyWayPotential v2</a>.</p>
 

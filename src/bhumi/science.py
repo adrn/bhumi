@@ -46,18 +46,43 @@ def compute_derived_quantities(source: dict[str, Any]) -> dict[str, Any]:
     result = dict(source)
 
     parallax = source.get("parallax")
-    # parallax_error = source.get("parallax_error")
+    parallax_error = source.get("parallax_error")
+    plx_snr = (
+        abs(parallax) / parallax_error
+        if parallax is not None and parallax_error is not None and parallax_error > 0
+        else 0.0
+    )
 
-    # Distance and distance modulus
-    if parallax is not None and parallax > 0:
+    # Distance and distance modulus — only when parallax > 0 and S/N > 5
+    if parallax is not None and parallax > 0 and plx_snr > 5:
         distance_kpc = 1.0 / parallax  # parallax in mas → d = 1/plx kpc
         distance_pc = distance_kpc * 1000.0
         dist_mod = 5.0 * np.log10(distance_pc / 10.0)
         result["distance_kpc"] = round(distance_kpc, 4)
         result["distance_modulus"] = round(dist_mod, 3)
+
+        # MC error propagation (drop negative parallax samples)
+        if parallax_error is not None and parallax_error > 0:
+            rng = np.random.default_rng(int(source.get("source_id", 0)) % 2**31)
+            plx_samples = rng.normal(parallax, parallax_error, size=10_000)
+            plx_samples = plx_samples[plx_samples > 0]
+            if len(plx_samples) > 10:
+                d_samples_kpc = 1.0 / plx_samples
+                d_samples_pc = d_samples_kpc * 1000.0
+                dm_samples = 5.0 * np.log10(d_samples_pc / 10.0)
+                result["distance_kpc_err"] = round(float(np.std(d_samples_kpc)), 4)
+                result["distance_modulus_err"] = round(float(np.std(dm_samples)), 3)
+            else:
+                result["distance_kpc_err"] = None
+                result["distance_modulus_err"] = None
+        else:
+            result["distance_kpc_err"] = None
+            result["distance_modulus_err"] = None
     else:
         result["distance_kpc"] = None
+        result["distance_kpc_err"] = None
         result["distance_modulus"] = None
+        result["distance_modulus_err"] = None
 
     # Tangential velocity: v_t = 4.74047 * mu_tot / parallax [km/s]
     # where mu_tot in mas/yr and parallax in mas

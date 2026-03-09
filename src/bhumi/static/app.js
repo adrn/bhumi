@@ -482,4 +482,28 @@ document.addEventListener("DOMContentLoaded", () => {
       h2.closest(".card").classList.toggle("collapsed");
     });
   });
+
+  // Nav menu (kebab)
+  const navBtn = document.getElementById("nav-menu-btn");
+  const navMenu = document.getElementById("nav-menu");
+  if (navBtn && navMenu) {
+    document.querySelectorAll("main .card[id]").forEach((section) => {
+      const h2 = section.querySelector("h2");
+      if (!h2) return;
+      const a = document.createElement("a");
+      a.href = "#" + section.id;
+      a.textContent = h2.textContent;
+      a.addEventListener("click", () => navMenu.classList.remove("open"));
+      navMenu.appendChild(a);
+    });
+
+    navBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navMenu.classList.toggle("open");
+    });
+
+    document.addEventListener("click", () => {
+      navMenu.classList.remove("open");
+    });
+  }
 });

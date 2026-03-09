@@ -171,6 +171,61 @@ a.source-id-link:hover {
   border-bottom-color: var(--accent);
 }
 
+/* Nav menu (kebab) */
+.nav-menu-wrapper {
+  position: relative;
+}
+
+.nav-menu-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  line-height: 1;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.nav-menu-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.nav-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-width: 200px;
+  padding: 0.4rem 0;
+  z-index: 1000;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.nav-menu.open {
+  display: block;
+}
+
+.nav-menu a {
+  display: block;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.nav-menu a:hover {
+  background: var(--border);
+  color: var(--accent);
+}
+
 /* External link buttons */
 .external-links {
   display: flex;
