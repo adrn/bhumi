@@ -24,6 +24,18 @@ cd bhumi
 uv sync
 ```
 
+## Precompute static data
+
+To recompute the velocity density maps used in the Toomre and sausage diagrams:
+
+```sh
+uv run python scripts/precompute_toomre_density.py
+```
+
+This iterates all GaiaSource HDF5 files, computes Galactocentric velocities for sources
+with well-measured parallaxes and radial velocities, and writes
+`src/bhumi/static/toomre_density.json` and `src/bhumi/static/sausage_density.json`.
+
 ## Usage
 
 ### Quick start (foreground)
