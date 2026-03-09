@@ -30,13 +30,13 @@ NSS_ORBIT_DIR = GAIA_DATA_ROOT / "NssTwoBodyOrbit"
 ANDRAE_CATALOG_PATH = Path(
     os.environ.get(
         "BHUMI_ANDRAE_CATALOG",
-        "/mnt/home/apricewhelan/data/Gaia/vac/Andrae2023/table_1_catwise.fits",
+        "/mnt/home/apricewhelan/data/Gaia/vac/Andrae2023/table_1_catwise.hdf5",
     )
 )
 ZHANG_CATALOG_PATH = Path(
     os.environ.get(
         "BHUMI_ZHANG_CATALOG",
-        "/mnt/home/apricewhelan/data/Gaia/vac/Zhang2023/stellar_params_catalog_joined.h5",
+        "/mnt/home/apricewhelan/data/Gaia/vac/Zhang2023/stellar_params_catalog_all.h5",
     )
 )
 
@@ -159,11 +159,9 @@ _rvs_index: FileIndex | None = None
 _xp_index: FileIndex | None = None
 _vari_index: FileIndex | None = None
 
-# Value-added catalog indexes (loaded at first use)
-_andrae_source_ids: np.ndarray | None = None
-_andrae_sort_idx: np.ndarray | None = None
-_zhang_source_ids: np.ndarray | None = None
-_zhang_sort_idx: np.ndarray | None = None
+# Value-added catalog handles (memory-mapped, zero RAM for sorted catalogs)
+_andrae_file: h5py.File | None = None
+_zhang_file: h5py.File | None = None
 _nss_source_ids: np.ndarray | None = None
 _nss_sort_idx: np.ndarray | None = None
 
@@ -521,30 +519,25 @@ def get_xp_spectrum(
 # ---------------------------------------------------------------------------
 
 
-def _load_andrae_index() -> tuple[np.ndarray, np.ndarray]:
-    """Load the Andrae+2023 source_id column and build a sorted index.
+def _get_andrae_file() -> h5py.File:
+    """Return an open handle to the Andrae+2023 HDF5 catalog.
 
-    Returns:
-        Tuple of (sorted_source_ids, sort_indices) for searchsorted lookup.
+    The file is opened once and kept open for the process lifetime.
+    The source_id dataset is pre-sorted, so np.searchsorted works
+    directly on the HDF5 dataset without loading it into memory.
     """
-    global _andrae_source_ids, _andrae_sort_idx
-    if _andrae_source_ids is not None:
-        return _andrae_source_ids, _andrae_sort_idx
-
-    from astropy.io import fits
-
-    logger.info("Loading Andrae+2023 source_id index from %s...", ANDRAE_CATALOG_PATH)
-    with fits.open(ANDRAE_CATALOG_PATH, memmap=True) as hdul:
-        raw_ids = hdul[1].data["source_id"].copy()
-    sort_idx = np.argsort(raw_ids)
-    _andrae_source_ids = raw_ids[sort_idx]
-    _andrae_sort_idx = sort_idx
-    logger.info("Andrae+2023 index loaded: %d rows", len(_andrae_source_ids))
-    return _andrae_source_ids, _andrae_sort_idx
+    global _andrae_file
+    if _andrae_file is None:
+        logger.info("Opening Andrae+2023 catalog: %s", ANDRAE_CATALOG_PATH)
+        _andrae_file = h5py.File(ANDRAE_CATALOG_PATH, "r")
+    return _andrae_file
 
 
 def get_andrae_params(source_id: int) -> dict[str, Any] | None:
     """Look up stellar parameters from the Andrae+2023 XGBoost catalog.
+
+    Uses binary search on the pre-sorted source_id dataset (memory-mapped,
+    no RAM needed for the index).
 
     Args:
         source_id: Gaia DR3 source identifier.
@@ -556,30 +549,19 @@ def get_andrae_params(source_id: int) -> dict[str, Any] | None:
         return None
 
     try:
-        from astropy.io import fits
-
-        sorted_ids, sort_idx = _load_andrae_index()
+        f = _get_andrae_file()
+        sorted_ids = f["source_id"]
         pos = int(np.searchsorted(sorted_ids, source_id))
-        if pos >= len(sorted_ids) or sorted_ids[pos] != source_id:
+        if pos >= len(sorted_ids) or int(sorted_ids[pos]) != source_id:
             return None
 
-        row_idx = int(sort_idx[pos])
-        with fits.open(ANDRAE_CATALOG_PATH, memmap=True) as hdul:
-            row = hdul[1].data[row_idx]
-
         result: dict[str, Any] = {}
-        columns = [
-            ("teff_xgboost", "teff_xgboost"),
-            ("logg_xgboost", "logg_xgboost"),
-            ("mh_xgboost", "mh_xgboost"),
-        ]
-        for key, col in columns:
-            val = float(row[col])
-            result[key] = None if np.isnan(val) else round(val, 4)
+        for col in ("teff_xgboost", "logg_xgboost", "mh_xgboost"):
+            val = float(f[col][pos])
+            result[col] = None if np.isnan(val) else round(val, 4)
 
-        # Boolean flag
         try:
-            result["in_training_sample"] = bool(row["in_training_sample"])
+            result["in_training_sample"] = bool(f["in_training_sample"][pos])
         except (KeyError, ValueError):
             result["in_training_sample"] = None
 
@@ -589,28 +571,36 @@ def get_andrae_params(source_id: int) -> dict[str, Any] | None:
         return None
 
 
-def _load_zhang_index() -> tuple[np.ndarray, np.ndarray]:
-    """Load the Zhang+2023 source_id column and build a sorted index.
+def _get_zhang_file() -> h5py.File:
+    """Return an open handle to the Zhang+2023 HDF5 catalog.
 
-    Returns:
-        Tuple of (sorted_source_ids, sort_indices) for searchsorted lookup.
+    The file is opened once and kept open for the process lifetime.
+    The gdr3_source_id dataset is pre-sorted, so np.searchsorted works
+    directly on the HDF5 dataset without loading it into memory.
     """
-    global _zhang_source_ids, _zhang_sort_idx
-    if _zhang_source_ids is not None:
-        return _zhang_source_ids, _zhang_sort_idx
+    global _zhang_file
+    if _zhang_file is None:
+        logger.info("Opening Zhang+2023 catalog: %s", ZHANG_CATALOG_PATH)
+        _zhang_file = h5py.File(ZHANG_CATALOG_PATH, "r")
+    return _zhang_file
 
-    logger.info("Loading Zhang+2023 source_id index from %s...", ZHANG_CATALOG_PATH)
-    with h5py.File(ZHANG_CATALOG_PATH, "r") as f:
-        raw_ids = f["__astropy_table__"]["source_id"][:]
-    sort_idx = np.argsort(raw_ids)
-    _zhang_source_ids = raw_ids[sort_idx]
-    _zhang_sort_idx = sort_idx
-    logger.info("Zhang+2023 index loaded: %d rows", len(_zhang_source_ids))
-    return _zhang_source_ids, _zhang_sort_idx
+
+# Zhang stellar_params_est/err column indices:
+# [0]=teff (1e3 K), [1]=feh, [2]=logg, [3]=extinction, [4]=parallax
+_ZHANG_PARAM_NAMES = [
+    ("zhang_teff", 0),
+    ("zhang_feh", 1),
+    ("zhang_logg", 2),
+    ("zhang_extinction", 3),
+    ("zhang_parallax", 4),
+]
 
 
 def get_zhang_params(source_id: int) -> dict[str, Any] | None:
     """Look up stellar parameters from the Zhang, Green & Rix 2023 catalog.
+
+    Uses binary search on the pre-sorted gdr3_source_id dataset
+    (memory-mapped, no RAM needed for the index).
 
     Args:
         source_id: Gaia DR3 source identifier.
@@ -622,47 +612,31 @@ def get_zhang_params(source_id: int) -> dict[str, Any] | None:
         return None
 
     try:
-        sorted_ids, sort_idx = _load_zhang_index()
+        f = _get_zhang_file()
+        sorted_ids = f["gdr3_source_id"]
         pos = int(np.searchsorted(sorted_ids, source_id))
-        if pos >= len(sorted_ids) or sorted_ids[pos] != source_id:
+        if pos >= len(sorted_ids) or int(sorted_ids[pos]) != source_id:
             return None
 
-        row_idx = int(sort_idx[pos])
-        with h5py.File(ZHANG_CATALOG_PATH, "r") as f:
-            row = f["__astropy_table__"][row_idx]
+        est = f["stellar_params_est"][pos]  # shape (5,)
+        err = f["stellar_params_err"][pos]  # shape (5,)
 
-        columns = [
-            "zhang_teff",
-            "zhang_teff_err",
-            "zhang_feh",
-            "zhang_feh_err",
-            "zhang_logg",
-            "zhang_logg_err",
-            "zhang_extinction",
-            "zhang_extinction_err",
-            "zhang_parallax",
-            "zhang_parallax_err",
-            "quality_flags",
-            "feh_confidence",
-            "teff_confidence",
-            "logg_confidence",
-        ]
         result: dict[str, Any] = {}
-        for col in columns:
-            try:
-                val = float(row[col])
-                if col == "quality_flags":
-                    result[col] = int(row[col])
-                elif np.isnan(val):
-                    result[col] = None
-                else:
-                    # Teff is stored in units of 1e3 K — convert to K
-                    if col in ("zhang_teff", "zhang_teff_err"):
-                        result[col] = round(val * 1000.0, 1)
-                    else:
-                        result[col] = round(val, 4)
-            except (KeyError, ValueError, IndexError):
-                result[col] = None
+        for name, idx in _ZHANG_PARAM_NAMES:
+            val = float(est[idx])
+            val_err = float(err[idx])
+            # Teff is stored in units of 1e3 K — convert to K
+            if name in ("zhang_teff",):
+                val *= 1000.0
+                val_err *= 1000.0
+            result[name] = None if np.isnan(val) else round(val, 4)
+            result[name + "_err"] = None if np.isnan(val_err) else round(val_err, 4)
+
+        # Scalar columns
+        result["quality_flags"] = int(f["quality_flags"][pos])
+        for col in ("feh_confidence", "teff_confidence", "logg_confidence"):
+            val = float(f[col][pos])
+            result[col] = None if np.isnan(val) else round(val, 4)
 
         # Derive distance from spectrophotometric parallax
         plx = result.get("zhang_parallax")
