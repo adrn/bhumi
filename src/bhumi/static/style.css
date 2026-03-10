@@ -434,6 +434,58 @@ main {
   margin-bottom: 1rem;
 }
 
+/* Info icons for plot descriptions */
+.plot-wrapper {
+  position: relative;
+}
+
+.plot-info {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-style: normal;
+  line-height: 20px;
+  text-align: center;
+  cursor: help;
+  user-select: none;
+}
+
+.plot-info:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.plot-info .plot-info-tooltip {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 26px;
+  width: 280px;
+  padding: 0.6rem 0.75rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.plot-info:hover .plot-info-tooltip {
+  display: block;
+}
+
 /* Plot containers */
 .plot-container {
   width: 100%;

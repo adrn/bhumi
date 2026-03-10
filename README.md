@@ -32,9 +32,15 @@ To recompute the velocity density maps used in the Toomre and sausage diagrams:
 uv run python scripts/precompute_toomre_density.py
 ```
 
-This iterates all GaiaSource HDF5 files, computes Galactocentric velocities for sources
-with well-measured parallaxes and radial velocities, and writes
-`src/bhumi/static/toomre_density.json` and `src/bhumi/static/sausage_density.json`.
+To recompute the color–magnitude diagram background density:
+
+```sh
+uv run python scripts/precompute_cmd_density.py
+```
+
+These scripts iterate all GaiaSource HDF5 files and write precomputed density
+JSON files into `src/bhumi/static/`. The plots still render without these files,
+but the density backgrounds will be missing.
 
 ## Usage
 

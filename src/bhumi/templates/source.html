@@ -248,9 +248,12 @@
           </table>
         </div>
 
-        <h3>Color–Magnitude Diagram (nearby stars)</h3>
-        <div id="cmd-plot" class="plot-container">
-          <p class="loading">Loading CMD...</p>
+        <h3>Color–Magnitude Diagram</h3>
+        <div class="plot-wrapper">
+          <span class="plot-info">i<span class="plot-info-tooltip">Background density: all Gaia DR3 sources with parallax S/N &gt; 8 and valid BP/RP photometry (~130M stars). Colored points: stars from the same HEALPix chunk file as this source.</span></span>
+          <div id="cmd-plot" class="plot-container">
+            <p class="loading">Loading CMD...</p>
+          </div>
         </div>
       </section>
 
@@ -560,8 +563,14 @@
 
           <h3>Velocity Diagrams</h3>
           <div class="two-col-grid">
-            <div id="toomre-plot" class="plot-container"></div>
-            <div id="sausage-plot" class="plot-container"></div>
+            <div class="plot-wrapper">
+              <span class="plot-info">i<span class="plot-info-tooltip">Background density: all Gaia DR3 sources with parallax S/N &gt; 5, valid radial velocity, and proper motions (~33M stars). Dashed circles show constant total velocity offsets (50, 100, 150 km/s) from the LSR.</span></span>
+              <div id="toomre-plot" class="plot-container"></div>
+            </div>
+            <div class="plot-wrapper">
+              <span class="plot-info">i<span class="plot-info-tooltip">Background density: all Gaia DR3 sources with parallax S/N &gt; 5, valid radial velocity, and proper motions (~33M stars). Spherical radial velocity vs. azimuthal velocity in Galactocentric coordinates.</span></span>
+              <div id="sausage-plot" class="plot-container"></div>
+            </div>
           </div>
         </div>
       </section>

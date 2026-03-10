@@ -69,39 +69,63 @@ function buildTableHTML(rows) {
 // CMD Plot
 // ---------------------------------------------------------------------------
 
+// Cache for CMD density
+let _cmdDensity = null;
+
 async function loadCMD() {
   const container = document.getElementById("cmd-plot");
-  const data = await apiFetch(`/api/cmd/${SOURCE_ID}`);
+
+  // Fetch API data and precomputed density in parallel
+  const [data, cmdDen] = await Promise.all([
+    apiFetch(`/api/cmd/${SOURCE_ID}`),
+    _cmdDensity || fetchDensity("/static/cmd_density.json"),
+  ]);
+  _cmdDensity = cmdDen;
+
   if (!data) {
     container.innerHTML = '<p class="loading">CMD data not available.</p>';
     return;
   }
 
-  const density = {
+  // Precomputed all-sky density as heatmap background
+  const traces = [];
+  if (cmdDen) {
+    traces.push({
+      x: cmdDen.x,
+      y: cmdDen.y,
+      z: cmdDen.z,
+      type: "heatmap",
+      colorscale: [
+        [0.0, "rgba(10,10,30,0)"],
+        [0.2, "rgba(30,50,90,0.5)"],
+        [0.4, "rgba(50,100,140,0.6)"],
+        [0.6, "rgba(80,160,180,0.7)"],
+        [0.8, "rgba(150,210,200,0.8)"],
+        [1.0, "rgba(240,250,240,0.9)"],
+      ],
+      showscale: false,
+      hoverinfo: "skip",
+      zsmooth: "best",
+      connectgaps: false,
+      name: "All Gaia (S/N>8)",
+    });
+  }
+
+  // Chunk neighbors as scatter with low opacity
+  const neighbors = {
     x: data.bp_rp,
     y: data.abs_g,
-    type: "histogram2d",
-    colorscale: [
-      [0, "rgba(0,0,0,0)"],
-      [0.01, "#1a1a4e"],
-      [0.1, "#2a4858"],
-      [0.3, "#3a7ca5"],
-      [0.5, "#6ea8fe"],
-      [0.7, "#a0c4ff"],
-      [1.0, "#e0e0e8"],
-    ],
-    colorbar: {
-      title: { text: "log\u2081\u2080(Count)", font: { color: PLOTLY_TEXT } },
-      tickfont: { color: PLOTLY_DIM },
+    mode: "markers",
+    type: "scatter",
+    marker: {
+      color: PLOTLY_ACCENT,
+      size: 2,
+      opacity: 0.3,
     },
-    xbins: { start: -1, end: 5, size: 0.05 },
-    ybins: { start: -6, end: 16, size: 0.1 },
-    zsmooth: false,
-    zauto: false,
-    zmin: 0.5,
-    name: `Neighbors (${data.n_stars})`,
-    hoverinfo: "z",
+    name: `Chunk (${data.n_stars})`,
+    hoverinfo: "skip",
   };
+  traces.push(neighbors);
 
   const target = {
     x: [data.target_bp_rp],
@@ -117,6 +141,8 @@ async function loadCMD() {
     name: "This source",
   };
 
+  traces.push(target);
+
   container.innerHTML = "";
 
   const layout = baseLayout(
@@ -126,7 +152,7 @@ async function loadCMD() {
     {
       xaxis: {
         title: "BP \u2212 RP (mag)",
-        range: [-1, 5],
+        range: [-1, 6],
         gridcolor: PLOTLY_GRID,
         zerolinecolor: PLOTLY_GRID,
         color: PLOTLY_DIM,
@@ -145,18 +171,7 @@ async function loadCMD() {
     },
   );
 
-  // Render, then apply log scale to density counts
-  Plotly.newPlot(container, [density, target], layout, {
-    responsive: true,
-  }).then(() => {
-    const z = container.data[0].z;
-    if (z) {
-      const logZ = z.map((row) =>
-        row.map((v) => (v > 0 ? Math.log10(v) : null)),
-      );
-      Plotly.restyle(container, { z: [logZ], zauto: true, zmin: null }, [0]);
-    }
-  });
+  Plotly.newPlot(container, traces, layout, { responsive: true });
 }
 
 // ---------------------------------------------------------------------------
